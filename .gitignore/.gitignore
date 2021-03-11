@@ -24,7 +24,7 @@ $RECYCLE.BIN/
 
 # directories
 .idea/
-**/videos/
+**/videos
 
 # files
 debug.log
