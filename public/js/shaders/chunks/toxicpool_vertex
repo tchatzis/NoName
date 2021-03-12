@@ -1,0 +1,36 @@
+vec3 transformed = vec3( position );
+
+float cycles = frequency * time / 6.283185307179;
+
+vec3 p = vec3( 0.0, 0.0, 0.0 );
+	p.x = transformed.x + cycles;
+	p.y = transformed.y + cycles;
+	p.z = transformed.z + cycles;
+
+vec3 d = vec3( 0.0, 0.0, 0.0 );
+	d.x = simplex3d_fractal( vec3( p.x, position.y, position.z ) ) * noise.x;
+	d.y = simplex3d_fractal( vec3( position.x, p.y, position.z ) ) * noise.y;
+	d.z = simplex3d_fractal( vec3( position.x, position.y, p.z ) ) * noise.z;
+
+// center out
+float dx = position.x + d.x;
+float dy = position.y + d.y;
+float dz = position.z + d.z;
+
+vec3 angle = vec3( 0.0, 0.0, 0.0 );
+	angle.x = sqrt( dz*dz + dy*dy ) - frequency * time;
+	angle.y = sqrt( dx*dx + dz*dz ) - frequency * time;
+	angle.z = sqrt( dx*dx + dy*dy ) - frequency * time;
+
+transformed.x += ( sin( angle.x ) + d.x ) * scale.x;
+transformed.y += ( sin( angle.y ) + d.y ) * scale.y;
+transformed.z += ( sin( angle.z ) + d.z ) * scale.z;
+
+// normals
+vec3 myNormals = vec3( 0.0, 0.0, 0.0 );
+	myNormals.x = -sin( angle.x ) * cos( angle.x );
+	myNormals.y = -cos( angle.y ) * cos( angle.y );
+	myNormals.z = -sin( angle.z ) * sin( angle.z );
+
+objectNormal = normalize( myNormals );
+vNormal = normalMatrix * objectNormal;

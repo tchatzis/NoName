@@ -1,0 +1,109 @@
+.navigation
+{
+    position: fixed;
+    width: 100vw;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    color: silver;
+    line-height: 16px;
+    font-size: 1.2em;
+    text-align: left;
+    user-select: none;
+}
+
+.active
+{
+    background-color: #333;
+}
+
+.list
+{
+    display: none;
+    position: fixed;
+    bottom: 0;
+    background-color: rgba( 0, 0, 0, 0.5 );
+    max-height: 30vh;
+}
+
+.list.expand
+{
+    display: block;
+    overflow-y: auto;
+}
+
+.menu, .momentary, .switch, .tab
+{
+    width: 10vw;
+    padding: 3px 10px 3px 20px;
+    border-left: 8px solid transparent;
+    border-top: 1px solid #222;
+    cursor: pointer;
+    text-transform: capitalize;
+}
+
+.menu:hover, .switch:hover
+{
+    border-left: 8px solid lime;
+    color: cyan;
+    background-color: #333;
+}
+
+.menu.active
+{
+    border-left: 8px solid lime;
+    color: cyan;
+}
+
+.menu.active:hover, .switch.active:hover, .tab.active:hover
+{
+    border-left: 8px solid red;
+    color: cyan;
+    background-color: #333;
+}
+
+.momentary
+{
+    color: white;
+}
+
+.momentary:hover
+{
+    color: black;
+    background-color: orange;
+}
+
+.sub
+{
+    position: absolute;
+    z-index: 21;
+    display: block;
+    background-color: rgba( 0, 0, 0, 0.5 );
+}
+
+.tabs
+{
+    bottom: 0;
+}
+
+.tab
+{
+    border-left: 8px solid #FF0;
+    border-top: 1px solid #333;
+    border-right: 1px solid #333;
+    border-radius: 8px 8px 0 0;
+    background-color: rgba( 0, 0, 0, 0.5 );
+    float: left;
+}
+
+.tab:hover, .tab.active
+{
+    border-left: 8px solid lime;
+    color: cyan;
+}
+
+.truncate
+{
+    max-height: 1.2em;
+    overflow: hidden;
+}

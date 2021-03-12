@@ -1,0 +1,109 @@
+:root
+{
+    --scrollbar-background: rgba( 128, 128, 128, 0.4 );
+    --scrollbar-foreground: rgba( 255, 255, 255, 0.4 );
+}
+
+html, body
+{
+    margin: 0;
+    border: 0;
+}
+
+body
+{
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: helvetica, verdana, serif;
+    font-size: 11px;
+    background-color: black;
+    color: white;
+}
+
+::-webkit-scrollbar
+{
+    width: 12px;
+}
+
+::-webkit-scrollbar-track
+{
+    box-shadow: inset 0 0 5px var( --scrollbar-foreground );
+    background-color: var( --scrollbar-background );
+    outline: none;
+}
+
+::-webkit-scrollbar-thumb
+{
+    background-color: #666;
+    outline: none;
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-corner
+{
+    background-color: var( --scrollbar-background );
+}
+
+#renderer
+{
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+div.node
+{
+    position: absolute;
+    border: none;
+}
+
+a, img
+{
+    border: none;
+    margin: 0;
+    padding: 0;
+    vertical-align: bottom;
+    overflow: hidden;
+}
+
+.fullscreen
+{
+    width: 100vw;
+    height: 100vh;
+}
+
+.table-row
+{
+    display: table-row;
+}
+
+.table-cell
+{
+    display: table-cell;
+    border-spacing: 1px;
+    border-collapse: collapse;
+}
+
+.pointer
+{
+    cursor: pointer;
+}
+
+ul
+{
+    margin-block-start: 0;
+    margin-block-end: 0;
+    margin-inline-end: 0;
+    margin-inline-start: 0;
+    margin-left: 10px;
+    padding: 0;
+
+}
+
+ul li
+{
+    list-style-type: none;
+}
+

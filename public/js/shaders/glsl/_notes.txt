@@ -1,0 +1,65 @@
+background_vertex contains "no translation" code
+"billboard" code
+gl_Position = projectionMatrix * ( modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) + vec4( position, 0.0 ) );
+
+
+// zero_circle fragment chunk
+float zero=sphereZero(ray,pos,0.9);
+
+if (zero>0.0)
+{
+	vec4 s4=noiseSpace(ray,pos,100.0,mr,0.05,vec3(1.0,2.0,4.0),0.0);
+	s4.x=pow(s4.x,3.0);
+	gl_FragColor.xyz += mix(mix(vec3(1.0,0.0,0.0),vec3(0.0,0.0,1.0),s4.y*1.9),vec3(0.9,1.0,0.1),s4.w*0.75)*s4.x*pow(s4.z*2.5,3.0)*0.2*zero;
+}
+
+fire shaders use custom attributes
+float gray = length( gl_FragCoord.xy / resolution ) - clamp( saturation, 0.0, 1.0 );
+
+
+// lighting
+vec4 spec = vec4( 0.0 );
+vec3 n = normalize( vNormal );
+vec3 l = normalize( vLight );
+vec3 e = normalize( vEye );
+
+vec4 diffuse = vec4( 0.5 );
+vec4 specular = vec4( 1.0 );
+float shininess = 1.0;
+float ambient = 0.0;
+float intensity = max( dot( n, l ), 0.0 );
+
+if ( intensity > 0.0 )
+{
+	vec3 h = normalize( l + e );
+	float intSpec = max( dot( h, n ), 0.0 );
+	spec = specular * pow( intSpec, shininess );
+}
+
+color = color * max( intensity * diffuse + spec, ambient );
+
+vNormal = normalize( vec3( atan( iPosition.x / iPosition.z ), -1.0, atan( iPosition.z / iPosition.x ) ) );
+
+custom contains lighting
+
+custom fragment has discard
+
+
+mat4 matrix()
+{
+    /*return mat4(
+        matrix0.x, matrix0.y, matrix0.z, matrix0.w,
+        matrix1.x, matrix1.y, matrix1.z, matrix1.w,
+        matrix2.x, matrix2.y, matrix2.z, matrix2.w,
+        matrix3.x, matrix3.y, matrix3.z, matrix3.w );*/
+    /*return mat4(
+        matrix0.x, matrix1.x, matrix2.x, matrix3.x,
+        matrix0.y, matrix1.y, matrix2.y, matrix3.y,
+        matrix0.z, matrix1.z, matrix2.z, matrix3.z,
+        matrix0.w, matrix1.w, matrix2.w, matrix3.w );*/
+    return mat4(
+        matrix0.y, matrix1.y, matrix2.y, matrix3.y,
+        matrix0.z, matrix1.z, matrix2.z, matrix3.z,
+        matrix0.w, matrix1.w, matrix2.w, matrix3.w,
+        matrix0.x, matrix1.x, matrix2.x, matrix3.x );
+}

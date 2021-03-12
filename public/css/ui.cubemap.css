@@ -1,0 +1,289 @@
+.action
+{
+    text-align: center;
+    line-height: 32px;
+    width: 125px;
+    height: 32px;
+    border-radius: 4px;
+    background-color: #003333;
+    cursor: pointer;
+}
+
+.action:hover
+{
+    background-color: #003300;
+}
+
+.align-top
+{
+    vertical-align: top;
+}
+
+.bottom-line
+{
+    background-size: 10px 1px;
+    background-position: bottom;
+    background-repeat: repeat-x;
+    background-image: linear-gradient( to right, white 20%, transparent 0% );
+}
+
+.cell
+{
+    margin: 0;
+    padding: 0;
+    border: none;
+    overflow: hidden;
+    opacity: 0.8;
+}
+
+.cell:hover
+{
+    opacity: 1;
+}
+
+.console
+{
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 380px;
+    height: 100vh;
+    background-color: #141414;
+    z-index: 100;
+    border-right: 1px dotted white;
+    padding: 20px;
+}
+
+.contextmenu
+{
+    width: 180px;
+    height: 100px;
+    z-index: 10;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: none;
+}
+
+.control
+{
+    border-bottom: 1px dotted #333;
+    padding: 5px 0 5px 0;
+    grid-template-columns: auto auto auto;
+    z-index: 2;
+}
+
+.grid
+{
+    position: relative;
+    display: grid;
+    justify-content: start;
+    align-content: start;
+}
+
+.guides
+{
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.5;
+    width: 100%;
+    height: 100%;
+}
+
+.guides > .horizontal
+{
+    position: absolute;
+    border-top: 1px dashed black;
+    border-bottom: 1px dashed black;
+    top: calc( 33.33% - 1px );
+    left: 0;
+    width: 100%;
+    height: 33.33%;
+}
+
+.guides > .vertical
+{
+    position: absolute;
+    border-left: 1px dashed black;
+    border-right: 1px dashed black;
+    width: 25%;
+    height: 100%;
+    left: calc( 25% - 1px );
+    top: 0;
+}
+
+.hidden
+{
+    display: none !important;
+}
+
+.h-pad
+{
+    padding: 0 5px 0 5px;
+}
+
+.inline
+{
+    display: inline;
+}
+
+.item
+{
+    width: 100%;
+    padding: 3px 10px 3px 10px;
+    border-right: 10px solid #333333;
+    border-bottom: 1px dotted white;
+    line-height: 26px;
+    background-color: rgba( 0, 0, 0, 0.7 );
+    cursor: pointer;
+}
+
+.item:hover
+{
+    background-color: rgba( 0, 128, 128, 0.5 );
+    border-right: 10px solid #999999;
+}
+
+.label
+{
+    line-height: 32px;
+    padding-right: 10px;
+    border-color: silver;
+    width: 100px;
+}
+
+.message
+{
+    position: absolute;
+    bottom: -75px;;
+    left: 30%;
+    width: 30%;
+    height: 50px;
+    background-color: #FFFFCC;
+    text-align: center;
+    line-height: 50px;
+    padding: 10px;
+    transition: bottom 2s;
+    color: black;
+    font-size: 2em;
+    border-radius: 8px;
+}
+
+.message.show
+{
+    bottom: 20px;
+}
+
+.number, .text
+{
+    height: 30px;
+    border: 1px solid silver;
+    border-radius: 4px;
+    color: yellow;
+    outline: none;
+    overflow: hidden hidden;
+}
+
+.number
+{
+    width: 50px;
+    padding-left: 2px;
+}
+
+.number:hover
+{
+    color: cyan;
+    z-index: 3;
+}
+
+.number-label
+{
+    line-height: 32px;
+    padding-right: 10px;
+    border-color: silver;
+    width: 60px;
+}
+
+.opaque
+{
+    opacity: 0.5;
+}
+
+.outline, .panels
+{
+    position: absolute;
+}
+
+/* grouped for brevity */
+.outline
+{
+    pointer-events: none;
+    outline-offset: 0;
+    z-index: 2;
+    visibility: visible;
+    padding: 0;
+    outline: 1px dashed transparent;
+    opacity: 0.5;
+}
+
+.panels
+{
+    grid-template-columns: auto auto auto auto;
+    cursor: pointer;
+    z-index: 1;
+    overflow: auto;
+}
+
+.preview
+{
+    position: absolute;
+    width: calc( 100vw - 440px );
+    height: calc( 100vh - 40px );
+    top: 0;
+    left: 420px;
+    padding: 20px;
+    border: 0;
+    user-select: none;
+}
+
+.selected
+{
+    border-color: yellow !important;
+}
+
+.text
+{
+    width: 270px;
+    text-align: left;
+}
+
+.thirty-two
+{
+    width: 28px;
+    height: 28px;
+    border: 1px solid silver;
+    border-radius: 4px;
+}
+
+
+.value
+{
+    line-height: 30px;
+    padding-left: 10px;
+    color: cyan;
+}
+
+.zoom
+{
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    border: 1px solid silver;
+    z-index: 6;
+    width: 512px;
+    height: 512px;
+    overflow: scroll;
+    background-color: black;
+    display: none;
+}
