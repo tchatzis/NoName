@@ -24,7 +24,8 @@ $RECYCLE.BIN/
 
 # directories
 .idea/
-**/videos
+public/images/videos/
+functions/node_modules/
 
 # files
 debug.log
