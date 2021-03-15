@@ -11,21 +11,14 @@ DB.Forms = function()
 
     this.init = function( args )
     {            
-        var div = document.createElement( "div" );
-            div.innerText = args.title;
-            div.classList.add( "formtitle" );
+        Object.assign( this, args );
 
-        scope.form = document.createElement( "div" );
-        scope.form.classList.add( "form" );
-        scope.form.appendChild( div );
         scope.uuid = uuid();
         scope.fields = [];
         scope.validate = [];
         scope.data = {};
-        scope.message = new Message();
-        scope.message.init();
 
-        args.parent.appendChild( scope.form );
+        Form.call( this );
     };
 
     this.add = function( args )
@@ -48,52 +41,9 @@ DB.Forms = function()
         console.warn( "callback", response );
     }
 
-    // set the drag element and index
-    function dragstart( event, index )
+    function collapse( el )
     {
-        if ( event.target.hasAttribute( "draggable" ) )
-        {
-            event.dataTransfer.dropEffect = "move";
-            scope.index = index;
-            scope.dragElement = event.target;
-        }
-        else
-            event.preventDefault();
-    }
-
-    // this is required for functionality
-    function dragover( event )
-    {
-        event.preventDefault();
-    }
-
-    // this is where the db magic happens
-    function drop( event, data, docs, callback )
-    {
-        event.preventDefault();
-
-        // manipulate the DOM
-        var items = event.target.parentNode;
-            items.insertBefore( scope.dragElement, event.target );
-        // the drag element's doc data
-        var doc = docs[ scope.index ];
-
-        // remove doc from docs
-        docs.splice( scope.index, 1 );
-        // insert doc before drop element's index
-        docs.splice( data.meta.index, 0, doc );
-        // update the index according to new DOM order
-        docs.forEach( ( doc, i ) =>
-        {
-            var data = doc.data();
-                data.meta = data.meta || {};
-                data.meta.index = i;
-
-            this.db.update( data, doc.ref.path, ( data ) => {} );
-        } );
-
-        // re-render the form
-        callback();
+        el.classList.toggle( "formcollapsed" );
     }
 
     function hex( string )
@@ -216,6 +166,31 @@ DB.Forms = function()
     }
 
     // private classes
+    function Form()
+    {
+        var div = document.createElement( "div" );
+            div.innerText = this.title;
+            div.classList.add( "formtitle" );
+            div.addEventListener( "click", () => collapse( this.form ), false );
+
+        var existing = document.querySelector( `[ data-form = "${ this.name }" ]` );
+
+        this.form = existing || document.createElement( "div" );
+        this.form.innerHTML = null;
+        this.form.classList.add( "form" );
+        // collapsed
+        if ( this.collapsed === true )
+            this.form.classList.add( "formcollapsed" );
+        this.form.appendChild( div );
+        this.form.setAttribute( "data-form", this.name || this.title );
+
+        if ( !existing )
+            this.parent.appendChild( this.form );
+
+        this.message = new Message();
+        this.message.init();
+    }
+
     function Message()
     {
         this.add = ( name, message, status, delay ) =>
@@ -297,6 +272,10 @@ DB.Forms = function()
                 Color.call( this );
             break
 
+            case "controls":
+                Controls.call( this );
+            break;
+
             case "datalist":
                 DataList.call( this );
             break
@@ -319,7 +298,20 @@ DB.Forms = function()
         }
 
         // events
-        this.handlers.forEach( type => this.element.addEventListener( type.event, type.handler, false ) );
+        switch( this.type )
+        {
+            case "array":
+                // event handlers for arrays are set per item in Arrays()
+            break;
+
+            default:
+                this.handlers.forEach( type => this.element.addEventListener( type.event, type.handler, false ) );
+            break;
+        }
+
+        // hidden
+        if ( this.hidden === true )
+            this.element.parentNode.classList.add( "hide" );
 
         // process
         switch( this.type )
@@ -338,34 +330,35 @@ DB.Forms = function()
     {
         var field = this;
         var handlers = {};
+        var dragged;
 
-        this.handlers.forEach( item =>
-        {
-            handlers[ item.event ] = item.handler;
-        } );
-
-        this.element = document.querySelector( `[ data-uuid = "${ scope.uuid } ]"` ) || document.createElement( "div" );
+        this.element = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
         this.element.classList.add( "formarray" );
         this.element.setAttribute( "data-uuid", scope.uuid );
         this.element.setAttribute( "name", this.name );
         this.element.setAttribute( "placeholder", this.label );
         this.parent.appendChild( wrap( this.element ) );
 
+        this.handlers.forEach( type =>
+        {
+            handlers[ type.event ] = type.handler;
+        } );
+
         this.refresh = ( params ) => this.data.source.getter( params, ( response ) =>
         {
             this.element.innerHTML = null;
 
             var data = response.data;
-
-            if ( data )
                 data.forEach( ( value, i ) =>
                 {
-                    var args = { name: i, label: i, value: value, data: data, icon: "-", action: remove, params: params };
+                    var args = { name: i, label: i, value: value, data: data, drop: true,
+                        buttons: [ { icon: "-", action: remove, title: "remove" } ],
+                        handlers: [ { event: "input", handler: handlers.input } ] };
                     row.call( this, args );
                 } );
 
             // add field
-            var args = { name: data.length, label: data.length, value: this.value, data: data, icon: "+", action: add, params: params };
+            var args = { name: data.length, label: "add", value: { ...this.value }, data: data, buttons: [ { icon: "+", action: add, title: "add" } ] };
             row.call( this, args );
         } );
 
@@ -397,14 +390,74 @@ DB.Forms = function()
         {
             args.parent = document.createElement( "div" );
             args.parent.setAttribute( "data-index", args.name );
+            args.parent.classList.add( "formhighlight" );
+            args.parent.addEventListener( "mouseover", () => mouseover( args.data[ args.name ] ), false );
+            args.parent.addEventListener( "mouseout", () => mouseout( args.data[ args.name ] ), false );
+            if ( args.drop )
+            {
+                args.parent.setAttribute( "draggable", true );
+                args.parent.addEventListener( "dragstart", ( event ) => dragstart( event, args.name ), false );
+                args.parent.addEventListener( "dragover", dragover, false );
+                args.parent.addEventListener( "drop", drop, false );
+            }
 
             Object.assign( args, this.data.field );
-            console.log( args );
 
             new Field( args );
-            new Controls( args );
+
+            var controls = Object.assign( {}, args );
+                controls.type = "controls";
+            new Field( controls );
 
             this.element.appendChild( args.parent );
+        }
+
+        function mouseover( value )
+        {
+            if ( handlers.mouseover )
+                handlers.mouseover( value );
+        }
+
+        function mouseout( value )
+        {
+            if ( handlers.mouseout )
+                handlers.mouseout( value );
+        }
+
+        function dragstart( event, i )
+        {
+            if ( event.target.hasAttribute( "draggable" ) )
+            {
+                event.dataTransfer.dropEffect = "move";
+                dragged = event.target;
+            }
+            else
+                event.preventDefault();
+        }
+
+        function dragover( event )
+        {
+            event.preventDefault();
+        }
+
+        function drop( event )
+        {
+            event.preventDefault();
+
+            var dropped = event.target;
+
+            // find the drop element
+            while ( !dropped.hasAttribute( "draggable" ) )
+                dropped = dropped.parentNode;
+
+            var parent = dropped.parentNode;
+                parent.insertBefore( dragged, dropped );
+
+            if ( handlers.drop )
+                handlers.drop( { dragged: dragged, dropped: dropped, parent: parent } );
+
+            // reset the indices
+            parent.childNodes.forEach( ( child, i ) => child.setAttribute( "data-index", i ) );
         }
     }
 
@@ -434,13 +487,23 @@ DB.Forms = function()
         this.parent.appendChild( wrap( this.element ) );
     }
 
-    function Controls( args )
+    function Controls()
     {
-        this.button = document.createElement( "span" );
-        this.button.innerText = args.icon;
-        this.button.classList.add( "formbutton" );
-        this.button.addEventListener( "click", () => args.action( args ) );
-        args.parent.appendChild( this.button );
+        this.element = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
+        this.element.classList.add( "formcolumn" );
+        this.element.setAttribute( "data-uuid", scope.uuid );
+        this.element.setAttribute( "name", this.name );
+        this.parent.appendChild( wrap( this.element ) );
+
+        this.buttons.forEach( button =>
+        {
+            var div = document.createElement( "div" );
+                div.innerText = button.icon;
+                div.classList.add( "formbutton" );
+                div.setAttribute( "title", button.title );
+                div.addEventListener( "click", () => button.action( this ) );
+            this.element.appendChild( div );
+        } );
     }
 
     function DataList()
@@ -463,7 +526,7 @@ DB.Forms = function()
         }, false );
         this.parent.appendChild( wrap( this.element ) );
 
-        var items = document.querySelector( `[ data-uuid = "${ scope.uuid } ]"` ) || document.createElement( "datalist" );
+        var items = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "datalist" );
             items.innerHTML = null;
             items.setAttribute( "id", scope.uuid );
             items.setAttribute( "data-uuid", scope.uuid );
@@ -509,7 +572,7 @@ DB.Forms = function()
         this.element.setAttribute( "value", this.value );
         this.element.setAttribute( "placeholder", this.label );
 
-        var items = document.querySelector( `[ data-uuid = "${ scope.uuid } ]"` ) || document.createElement( "div" );
+        var items = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
             items.innerHTML = null;
             items.style.textAlign = "left";
             items.setAttribute( "data-uuid", scope.uuid );
@@ -536,7 +599,9 @@ DB.Forms = function()
                     items.appendChild( heading );
                 } );
 
-            var data = this.data.source.map ? response.data[ this.data.source.map ] : response.data;
+            //var data = this.data.source.map ? response.data[ this.data.source.map ] : response.data;
+            var data = response.data;
+            console.log( data );
 
             data.forEach( ( object, i ) =>
             {
@@ -641,7 +706,7 @@ DB.Forms = function()
 
         this.required = true;
 
-        this.element = document.querySelector( `[ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "select" );
+        this.element = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "select" );
         this.element.innerHTML = null;
         this.element.options = [];
         this.element.setAttribute( "id", scope.uuid );
@@ -724,7 +789,7 @@ DB.Forms = function()
         
         this.parent.appendChild( wrap( this.element ) );
 
-        var items = this.parent.querySelector( `[ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
+        var items = this.parent.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
             items.innerHTML = null;
             items.classList.add( "formtree" );
             items.setAttribute( "data-uuid", scope.uuid );
@@ -764,11 +829,11 @@ DB.Forms = function()
                     setTimeout( () => item.classList.add( "formselected" ), 500 );
             };
 
-            var traverse = function( data, parent, path, level, index )
+            var traverse = function( data, parent, breadcrumbs, level, index )
             {
                 level = level || 0;
                 index = index || 0;
-                path = [ ...path, data.name ];
+                breadcrumbs = [ ...breadcrumbs, data.name ];
 
                 var _i = i;
                 var value = data[ tree.data.output ];
@@ -785,7 +850,7 @@ DB.Forms = function()
                         state( this, value );
                         items.classList.remove( "formtreeexpand" );
                         
-                        let event = new CustomEvent( "validated", { detail: { field: this, value: tree.value, params: { path: path, data: response.data, map: params.map } } } );
+                        let event = new CustomEvent( "validated", { detail: { field: this, value: tree.value, breadcrumbs: breadcrumbs, params: { path: params.path, data: response.data, map: params.map } } } );
                         tree.element.dispatchEvent( event );
                     }, false );
                 var ul = items.querySelector( `[ data-parent = "${ data.parent }" ]` ) || document.createElement( "ul" );
@@ -800,7 +865,7 @@ DB.Forms = function()
                 i++;
 
                 if ( data.hasOwnProperty( "children" ) )
-                    data.children.forEach( ( child, index ) => traverse( child, ul, path, level, index ) );
+                    data.children.forEach( ( child, index ) => traverse( child, ul, breadcrumbs, level, index ) );
             }.bind( this );
 
             items.innerHTML = null;
@@ -849,30 +914,34 @@ DB.Forms = function()
     function Vector()
     {
         var vector = this;
-        var axes = Object.keys( this.value ).sort();
 
-        this.element = document.createElement( "div" );
-        this.element.setAttribute( "placeholder", this.label );
-
-        axes.forEach( axis =>
+        if ( this.value )
         {
-            var label = document.createElement( "div" );
-                label.classList.add( "formlabel" );
-                label.innerText = axis;
-            var input = document.createElement( "input" );
-                input.setAttribute( "type", "number" );
-                input.setAttribute( "value", this.value[ axis ] );
-                input.addEventListener( "input", function()
-                {
-                    vector.value[ axis ] = Number( this.value );
-                    validate( vector );
-                    console.log( scope.data );
-                }, false );
+            let axes = Object.keys( this.value ).sort();
 
-            this.element.appendChild( label );
-            this.element.appendChild( input );
-        } );
+            this.element = document.createElement( "div" );
+            this.element.setAttribute( "placeholder", this.label );
 
-        this.parent.appendChild( wrap( this.element ) );
+            axes.forEach( axis =>
+            {
+                var label = document.createElement( "div" );
+                    label.classList.add( "formlabel" );
+                    label.innerText = axis;
+                var input = document.createElement( "input" );
+                    input.setAttribute( "name", axis );
+                    input.setAttribute( "type", "number" );
+                    input.setAttribute( "value", this.value[ axis ] );
+                    input.addEventListener( "input", function()
+                    {
+                        vector.value[ axis ] = Number( this.value );
+                        validate( vector );
+                    }, false );
+
+                this.element.appendChild( label );
+                this.element.appendChild( input );
+            } );
+
+            this.parent.appendChild( wrap( this.element ) );
+        }
     }
 }

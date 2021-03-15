@@ -89,6 +89,13 @@ const DB = function()
             ref.delete().then( callback ).catch( app[ scope ].catch );
     };*/
 
+    app[ scope ].deleteField = ( params, callback ) =>
+    {
+        var ref = getRef( params );
+            ref.update( { [ params.map ]: fv.delete() } );
+        output( params, ref, callback );
+    };
+
     app[ scope ].get = ( params, callback ) =>
     {
         var ref = getRef( params );

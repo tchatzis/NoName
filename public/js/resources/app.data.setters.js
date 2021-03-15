@@ -4,8 +4,8 @@ const Setters = function()
 
     app[ scope ] = {};
 
-    app[ scope ].db = ( path, data, callback ) =>
+    app[ scope ].db = ( params, data, callback ) =>
     {
-        app.db.set( path, data, callback )
+        app.db.set( params, data, callback )
     };
 };
