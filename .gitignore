@@ -32,3 +32,10 @@ debug.log
 favicon.ico
 log.txt
 server-python.cmd
+
+# firestore
+database.rules.json
+firebase.json
+firestore.indexes.json
+firestore.rules
+storage.rules

@@ -22,13 +22,14 @@ const DB = function()
     function getRef( params )
     {
         var delim = "/";
+        var array = [ ...params.path.split( delim ) ];
         var path = [];
             path.push( "users" );
             path.push( app.user.id );
-            params.path.split( delim ).forEach( item => path.push( item ) );
+            array.forEach( item => path.push( item ) );
             path = path.join( delim ).replaceAll( delim + delim, delim );
 
-        var type = params.path.split( delim ).length % 2 ? "collection" : "doc";
+        var type = array.length % 2 ? "collection" : "doc";
 
         return db[ type ]( path );
     }
@@ -56,7 +57,7 @@ const DB = function()
         return valid.every( item => item );
     }
 
-    function output( params, ref, callback )
+    function output( ref, callback )
     {
         ref.onSnapshot( ( snapshot ) =>
         {
@@ -68,7 +69,8 @@ const DB = function()
             if ( snapshot.data )
                 data = snapshot.data() || [];
 
-            callback( { data: data, path: ref.path, map: params.map } );
+            if ( callback )
+                callback( { data: data } );
         } );
     }
 
@@ -93,13 +95,13 @@ const DB = function()
     {
         var ref = getRef( params );
             ref.update( { [ params.map ]: fv.delete() } );
-        output( params, ref, callback );
+        output( ref, callback );
     };
 
     app[ scope ].get = ( params, callback ) =>
     {
         var ref = getRef( params );
-        output( params, ref, callback );
+        output( ref, callback );
     };
     
     /*app[ scope ].max = ( key, path, limit, callback ) =>
@@ -154,14 +156,16 @@ const DB = function()
     };*/
 
     // does not overwrite entire doc
-    app[ scope ].set = ( params, data, callback ) =>
+    app[ scope ].set = ( params, callback ) =>
     {
         var ref = getRef( params );
 
         if ( params.map )
-            ref.update( { [ params.map ] : data } ).then( callback ).catch( app[ scope ].catch );
+            ref.update( { [ params.map ] : params.value } ).catch( app[ scope ].catch );
         else
-            ref.set( data, { merge: true } ).then( callback ).catch( app[ scope ].catch );
+            ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
+
+        output( ref, callback );
     };
 
     /*app[ scope ].test = ( params, data, callback ) =>

@@ -7,7 +7,7 @@ DB.Forms = function()
     var hash = "#";
 
     // public methods
-    this.clear = () => scope.form.innerHTML = null
+    this.clear = () => scope.form.innerHTML = null;
 
     this.init = function( args )
     {            
@@ -16,7 +16,7 @@ DB.Forms = function()
         scope.uuid = uuid();
         scope.fields = [];
         scope.validate = [];
-        scope.data = {};
+        scope.value = {};
 
         Form.call( this );
     };
@@ -44,6 +44,13 @@ DB.Forms = function()
     function collapse( el )
     {
         el.classList.toggle( "formcollapsed" );
+    }
+
+    function dispatch( params )
+    {
+        var event = new CustomEvent( "validated", { detail: { field: this, params: params } } );
+
+        this.element.dispatchEvent( event );
     }
 
     function hex( string )
@@ -103,7 +110,8 @@ DB.Forms = function()
     function match()
     {
         var arr1 = scope.validate.sort();
-        var arr2 = Object.keys( scope.data ).sort();
+        var arr2 = Object.keys( scope.value ).sort();
+
         if ( arr1.length !== arr2.length ) return false;
 
         for ( var i = 0; i < arr1.length; i++ )
@@ -116,7 +124,7 @@ DB.Forms = function()
     {
         const is =
         {
-            color: () => field.value.length == 9 && !!field.value.match( /#[a-f0-9]{6}$/gi ),
+            color: () => field.value.match( /#[a-f0-9]{6}$/gi ),
             date: () => true, // TODO: validate date
             datalist: () => is.text(),
             defined: () => typeof field.value !== "undefined",
@@ -125,6 +133,7 @@ DB.Forms = function()
             notnull: () => field.value !== null,
             number: ( value ) => typeof Number( value ) == "number" && !isNaN( Number( value ) ),
             populated: () => field.value !== "" && is.notnull() && is.defined(),
+            readonly: () => is.populated(),
             select: () => is.text(),
             text: () => typeof field.value == "string" && is.populated(),
             tree: () => is.text(),
@@ -172,23 +181,44 @@ DB.Forms = function()
             div.innerText = this.title;
             div.classList.add( "formtitle" );
             div.addEventListener( "click", () => collapse( this.form ), false );
-
         var existing = document.querySelector( `[ data-form = "${ this.name }" ]` );
 
         this.form = existing || document.createElement( "div" );
         this.form.innerHTML = null;
         this.form.classList.add( "form" );
-        // collapsed
-        if ( this.collapsed === true )
-            this.form.classList.add( "formcollapsed" );
         this.form.appendChild( div );
         this.form.setAttribute( "data-form", this.name || this.title );
+
+        var state = function()
+        {
+            // collapsed
+            if ( this.collapsed )
+                this.form.classList.add( "formcollapsed" );
+            else
+                this.form.classList.remove( "formcollapsed" );
+            // hidden
+            if ( this.hidden )
+                this.form.classList.add( "hide" );
+            else
+                this.form.classList.remove( "hide" );
+        }.bind( this );
+
+        state();
 
         if ( !existing )
             this.parent.appendChild( this.form );
 
         this.message = new Message();
         this.message.init();
+
+        this.update = ( args ) =>
+        {
+            for ( let key in args )
+                if ( args.hasOwnProperty( key ) )
+                    this[ key ] = args[ key ];
+
+            state();
+        }
     }
 
     function Message()
@@ -224,7 +254,7 @@ DB.Forms = function()
             {
                 this.remove();
             }, delay * 1000 );
-        }
+        };
 
         this.remove = () =>
         {
@@ -270,7 +300,7 @@ DB.Forms = function()
 
             case "color":
                 Color.call( this );
-            break
+            break;
 
             case "controls":
                 Controls.call( this );
@@ -278,19 +308,23 @@ DB.Forms = function()
 
             case "datalist":
                 DataList.call( this );
-            break
+            break;
 
             case "list":
                 List.call( this );
-            break
+            break;
 
             case "select":
                 Select.call( this );
-            break
+            break;
+
+            case "toggle":
+                Toggle.call( this );
+            break;
 
             case "tree":
                 Tree.call( this );
-            break
+            break;
 
             case "vector":
                 Vector.call( this );
@@ -324,6 +358,24 @@ DB.Forms = function()
                 Submit.call( this );
             break;
         }
+        
+        // update value of instance and element
+        switch( this.type )
+        {
+            case "color":
+            case "toggle":
+            case "tree":
+            case "vector":
+            break;
+
+            default:
+                this.update = ( value ) =>
+                {
+                    this.value = value;
+                    this.element.value = value;
+                };
+            break;
+        }
     }
 
     function Arrays()
@@ -346,6 +398,7 @@ DB.Forms = function()
 
         this.refresh = ( params ) => this.data.source.getter( params, ( response ) =>
         {
+            this.fields = [];
             this.element.innerHTML = null;
 
             var data = response.data;
@@ -354,12 +407,12 @@ DB.Forms = function()
                     var args = { name: i, label: i, value: value, data: data, drop: true,
                         buttons: [ { icon: "-", action: remove, title: "remove" } ],
                         handlers: [ { event: "input", handler: handlers.input } ] };
-                    row.call( this, args );
+                    this.fields.push( row.call( this, args ) );
                 } );
 
             // add field
             var args = { name: data.length, label: "add", value: { ...this.value }, data: data, buttons: [ { icon: "+", action: add, title: "add" } ] };
-            row.call( this, args );
+            this.fields.push( row.call( this, args ) );
         } );
 
         this.refresh( this.data.source.params );
@@ -403,13 +456,15 @@ DB.Forms = function()
 
             Object.assign( args, this.data.field );
 
-            new Field( args );
+            var field = new Field( args );
 
             var controls = Object.assign( {}, args );
                 controls.type = "controls";
             new Field( controls );
 
             this.element.appendChild( args.parent );
+
+            return field;
         }
 
         function mouseover( value )
@@ -424,7 +479,7 @@ DB.Forms = function()
                 handlers.mouseout( value );
         }
 
-        function dragstart( event, i )
+        function dragstart( event )
         {
             if ( event.target.hasAttribute( "draggable" ) )
             {
@@ -463,28 +518,40 @@ DB.Forms = function()
 
     function Color()
     {
-        var value = `${ square }${ hash }${ this.value || "FFFFFF" }`;
-        var color = this;
-            color.value = value;
+        var hex = () => `${ hash }${ this.value.replace( hash, "" ) || Math.floor( Math.random() * 16777215 ).toString( 16 ) }`;
+        var color = hex();
+        var value = `${ square }${ color }`;
+        var field = this;
+            field.value = color;
 
         this.required = true;
 
         this.element = document.createElement( "input" );
         this.element.value = value;
+        this.element.style.color = color;
         this.element.setAttribute( "name", this.name );
         this.element.setAttribute( "type", "text" );
-        this.element.setAttribute( "value", value );
+        this.element.setAttribute( "value", color );
         this.element.setAttribute( "placeholder", this.label );
         this.element.setAttribute( "maxlength", 9 );
         this.element.setAttribute( "size", 6 );
         this.element.setAttribute( "spellcheck", false );
         this.element.addEventListener( "input", function()
         {
-            color.value = this.value;
+            field.value = this.value;
             this.style.color = this.value.replace( square, "" );
-            validate( color );
+            validate( field );
         }, false );
         this.parent.appendChild( wrap( this.element ) );
+
+        this.update = ( value ) =>
+        {
+            var color = value || hex();
+
+            this.value = color;
+            this.element.value = `${ square }${ color }`;
+            this.element.style.color = color;
+        };
     }
 
     function Controls()
@@ -502,6 +569,10 @@ DB.Forms = function()
                 div.classList.add( "formbutton" );
                 div.setAttribute( "title", button.title );
                 div.addEventListener( "click", () => button.action( this ) );
+            if ( button.disabled )
+                div.classList.add( "formdisabled" );
+
+            button.element = div;
             this.element.appendChild( div );
         } );
     }
@@ -519,6 +590,7 @@ DB.Forms = function()
         this.element.setAttribute( "placeholder", this.label );
         this.element.setAttribute( "list", scope.uuid );
         this.element.setAttribute( "autocomplete", "off" );
+        this.element.addEventListener( "click", () => this.update( "" ), false );
         this.element.addEventListener( "input", function()
         {
             list.value = this.value;
@@ -643,9 +715,12 @@ DB.Forms = function()
                 // add handlers for row
                 this.handlers.forEach( type => row.addEventListener( type.event, function()
                 {
-                    let event = new CustomEvent( type.event, { detail: { field: this, data: object, params: list.data.source.params } } );
+                    // TODO:
+                    console.error( "see tree", { field: this, data: object, params: list.data.source.params } );
 
-                    type.handler( event );
+                    //let event = new CustomEvent( type.event, { detail: { field: this, data: object, params: list.data.source.params } } );
+
+                    //type.handler( event );
                 }, false ) );
 
                 // render columns and data
@@ -745,13 +820,13 @@ DB.Forms = function()
                         let valid = validate( field );
 
                         if ( valid )
-                            scope.data[ field.name ] = field.value;
+                            scope.value[ field.name ] = field.value;
                         else
-                            delete scope.data[ field.name ];
+                            delete scope.value[ field.name ];
                     }
                     else
                     {
-                        scope.data[ field.name ] = field.value;
+                        scope.value[ field.name ] = field.value;
                     }
                 }
             } );
@@ -759,14 +834,64 @@ DB.Forms = function()
             if ( match() )
             {
                 let params = this.data.destination.params;
-                let event = new CustomEvent( "validated", { detail: { field: this, data: scope.data, params: params } } );
+                    params.value = scope.value;
 
-                this.data.destination.setter( params, scope.data, () =>
+                this.data.destination.setter( params, ( data ) =>
                 {
-                    this.element.dispatchEvent( event );
+                    Object.assign( params, data );
+                    dispatch.call( this, params )
                 } );
             }
         }, false );
+    }
+    
+    function Toggle()
+    {
+        var field = this;
+        var span = document.createElement( "span" );
+            span.innerText = text( this.value );
+            span.value = bool( this.value );
+            span.addEventListener( "click", () =>
+            {
+                var index = field.data.source.findIndex( data => data.hasOwnProperty( text( field.value ) ) );
+                    index = ( index + 1 ) % field.data.source.length;
+
+                field.update( field.data.source[ index ] );
+            } );
+
+        function bool( value )
+        {
+            return Object.values( value )[ 0 ];
+        }
+
+        function text( value )
+        {
+            return Object.keys( value )[ 0 ];
+        }
+
+        function cls( value )
+        {
+            var val = Object.values( value )[ 0 ];
+            var action = val ? "add" : "remove";
+
+            span.classList[ action ]( "formselected" );
+        }
+
+        this.element = document.createElement( "div" );
+        this.element.setAttribute( "placeholder", this.label );
+        this.element.classList.add( "formitem" );
+        this.element.appendChild( span );
+        this.parent.appendChild( wrap( this.element ) );
+
+        cls( this.value );
+
+        this.update = ( value ) =>
+        {
+            this.value = value;
+            span.innerText = text( value );
+            span.value = bool( value );
+            cls( value );
+        };
     }
 
     function Tree()
@@ -802,79 +927,228 @@ DB.Forms = function()
         {
             var i = 0;
             var root;
-            var data = app.utils.clone( response.data );
-                data = params.map ? data[ params.map ] : data;
+            var map = this.data.source.params.map;
+            var data = { ...response.data };
+                data = map ? data[ map ] : data;
+            var sorted = Object.keys( data ).sort();
 
-            // expand parent/name to tree data structure
-            for ( let k in data )
+            for ( let k of sorted )
             {
-                if ( data.hasOwnProperty( k ) )
-                {
-                    let obj = data[ k ];
+                let obj = data[ k ];
 
-                    if ( !obj.parent )
-                        root = obj;
+                if ( !obj.parent )
+                    root = obj;
 
-                    let parent = data[ obj.parent ] || { name: obj.name, color: obj.color };
-                        parent.children = [ ...parent.children || [], obj ];
-                        parent.children.sort();
-                }
+                let parent = data[ obj.parent ] || { name: obj.name, color: obj.color };
+                    parent.children = [ ...parent.children || [], obj ];
             }
 
-            var state = function( item, value )
+            // add child
+            function show( add )
             {
-                items.querySelectorAll( ".formselected" ).forEach( item => item.classList.remove( "formselected" ) );
+                add.classList.toggle( "hide" );
+            }
+
+            function state( label, value )
+            {
+                tree.parent.querySelectorAll( "span" ).forEach( element => element.classList.remove( "formselected" ) );
 
                 if ( tree.value == value )
-                    setTimeout( () => item.classList.add( "formselected" ), 500 );
-            };
+                    label.classList.add( "formselected" );
+            }
 
-            var traverse = function( data, parent, breadcrumbs, level, index )
+            function expansion( args )
             {
-                level = level || 0;
-                index = index || 0;
-                breadcrumbs = [ ...breadcrumbs, data.name ];
+                var children = args.ul.querySelectorAll( "ul" );
+                    children.forEach( child =>
+                    {
+                        if ( child.getAttribute( "data-parent" ) == args.value )
+                        {
+                            child.classList.toggle( "hide" );
+                            this.innerText = child.classList.contains( "hide" ) ? "+" : "-";
+                        }
+                    } );
 
+                    params.value = args.expand;
+
+                var event = new CustomEvent( "expansion", { detail: { field: tree, breadcrumbs: args.breadcrumbs, params: params } } );
+                tree.element.dispatchEvent( event );
+            }
+
+            function traverse( args )
+            {
+                var data = args.data;
+                var parent = args.parent;
+                var breadcrumbs = [ ...args.breadcrumbs, data.name ];
+                var level = args.level || 0;
+                var index = args.index || 0;
                 var _i = i;
                 var value = data[ tree.data.output ];
-                var item = document.createElement( "li" );
-                    item.classList.add( "formitem" );
-                    item.innerText = value;
-                    item.setAttribute( "data-index", _i );
-                    item.setAttribute( "data-child", index );
-                    item.setAttribute( "data-value", value );
-                    item.addEventListener( "click", function()
+
+                // elements
+                var icon = document.createElement( "div" );
+                    icon.innerText = String.fromCodePoint( 8627 );
+                    icon.classList.add( "formswitch" );
+                var label = document.createElement( "span" );
+                    label.innerText = value;
+                    label.addEventListener( "click", function()
                     {
                         tree.value = value;
                         tree.element.value = value;
                         state( this, value );
-                        items.classList.remove( "formtreeexpand" );
-                        
-                        let event = new CustomEvent( "validated", { detail: { field: this, value: tree.value, breadcrumbs: breadcrumbs, params: { path: params.path, data: response.data, map: params.map } } } );
+
+                        params.data = data;
+                        params.value = value;
+                        params.visible = !!data.visible;
+
+                        console.error( params );
+
+                        // custom event passes breadcrumbs and params.data
+                        let event = new CustomEvent( "validated", { detail: { field: this, breadcrumbs: breadcrumbs, params: params } } );
                         tree.element.dispatchEvent( event );
                     }, false );
+                var item = document.createElement( "li" );
+                    item.classList.add( "formitem" );
+                    item.setAttribute( "data-index", _i );
+                    item.setAttribute( "data-child", index );
+                    item.setAttribute( "data-value", value );
+                    item.appendChild( icon );
+                    item.appendChild( label );
                 var ul = items.querySelector( `[ data-parent = "${ data.parent }" ]` ) || document.createElement( "ul" );
                     ul.setAttribute( "data-parent", data.parent );
                     ul.appendChild( item );
 
-                state( item, value );
+                // toggle
+                if ( data.hasOwnProperty( "children" ) )
+                {
+                    let args =
+                    {
+                        breadcrumbs: breadcrumbs,
+                        expand: data.expand,
+                        ul: ul,
+                        value: value
+                    };
+
+                    icon.addEventListener( "click", () => expansion.call( icon, args ), false );
+                }
+                else
+                {
+                    icon.style.pointerEvents = "none";
+                    icon.style.border = "1px solid transparent";
+                }
+                // add field
+                if ( tree.add )
+                {
+                    // new child ( toggled )
+                    let add = document.createElement( "li" );
+                        add.classList.add( "formadd" );
+                        add.classList.add( "hide" );
+                    let icon = document.createElement( "div" );
+                        icon.innerText = String.fromCodePoint( 8627 );
+                        icon.classList.add( "formswitch" );
+                        icon.style.pointerEvents = "none";
+                        icon.style.border = "1px solid transparent";
+                    let input = document.createElement( "input" );
+                        input.setAttribute( "size", 10 );
+                        input.setAttribute( "name", value );
+                        input.setAttribute( "type", "text" );
+                        input.setAttribute( "placeholder", `add child to ${ value }` );
+                    let action = document.createElement( "div" );
+                        action.innerText = "+";
+                        action.classList.add( "formbutton" );
+                        action.setAttribute( "title", `add child to ${ value }` );
+                        action.addEventListener( "click", () =>
+                        {
+                            params.data = response.data;
+                            params.value = value;
+                            console.log( params );
+
+                            tree.value = input.value;
+                            tree.element.value = input.value;
+                            tree.add( { field: tree, breadcrumbs: breadcrumbs, params: params } );
+                        }, false  );
+
+                    add.appendChild( icon );
+                    add.appendChild( input );
+                    add.appendChild( action );
+                    ul.appendChild( add );
+
+                    // add child button ( showing )
+                    let button = document.createElement( "div" );
+                        button.innerText = String.fromCodePoint( 8627 );
+                        button.classList.add( "formbutton" );
+                        button.setAttribute( "title", `add child to ${ value }` );
+                        button.addEventListener( "click", () => show( add, ul, value ), false );
+
+                    item.appendChild( button );
+                }
+
+                //if ( !expand && !!level )
+                //    ul.classList.add( "hide" );
+
+                if ( !data.expand )
+                    ul.classList.add( "hide" );
+
+                if ( args.expand )
+                    ul.classList.remove( "hide" );
+
+                state( label, value );
 
                 parent.appendChild( ul );
 
                 level++;
                 i++;
 
+                // reiterate
                 if ( data.hasOwnProperty( "children" ) )
-                    data.children.forEach( ( child, index ) => traverse( child, ul, breadcrumbs, level, index ) );
-            }.bind( this );
+                {
+                    icon.innerText = data.expand ? "-" : "+";
 
+                    data.children.forEach( ( child, index ) =>
+                    {
+                        var args =
+                        {
+                            data: child,
+                            parent: ul,
+                            breadcrumbs: breadcrumbs,
+                            expand: data.expand,
+                            level: level,
+                            index: index
+                        };
+
+                        traverse( args );
+                    } );
+                }
+            }
+
+            // clear the element
             items.innerHTML = null;
 
+            // start the iteration
             if ( root )
-                traverse( root, items, [] );
+            {
+                let args =
+                {
+                    data: root,
+                    parent: items,
+                    breadcrumbs: [],
+                    expand: data.expand
+                };
+
+                traverse( args );
+            }
         } );
 
+        console.warn( this.data.source.params );
+
         this.refresh( this.data.source.params );
+
+        this.update = ( value ) =>
+        {
+            this.value = value;
+            this.element.value = value;
+            this.refresh( this.data.source.params );
+        };
     }
 
     function Validate()
@@ -890,13 +1164,13 @@ DB.Forms = function()
                         let valid = validate( field );
 
                         if ( valid )
-                            scope.data[ field.name ] = field.value;
+                            scope.value[ field.name ] = field.value;
                         else
-                            delete scope.data[ field.name ];
+                            delete scope.value[ field.name ];
                     }
                     else
                     {
-                        scope.data[ field.name ] = field.value;
+                        scope.value[ field.name ] = field.value;
                     }
                 }
             } );
@@ -904,9 +1178,9 @@ DB.Forms = function()
             if ( match() )
             {
                 let params = this.data.destination.params;
-                let event = new CustomEvent( "validated", { detail: { field: this, data: scope.data, params: params } } );
+                    params.value = scope.value;
 
-                this.element.dispatchEvent( event );
+                dispatch.call( this, params );
             }
         }, false );
     }
@@ -919,8 +1193,11 @@ DB.Forms = function()
         {
             let axes = Object.keys( this.value ).sort();
 
-            this.element = document.createElement( "div" );
+            this.element = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
+            this.element.setAttribute( "data-uuid", scope.uuid );
+            this.element.setAttribute( "data-name", this.name );
             this.element.setAttribute( "placeholder", this.label );
+            this.components = [];
 
             axes.forEach( axis =>
             {
@@ -937,11 +1214,23 @@ DB.Forms = function()
                         validate( vector );
                     }, false );
 
+                this.components.push( input );
                 this.element.appendChild( label );
                 this.element.appendChild( input );
             } );
 
             this.parent.appendChild( wrap( this.element ) );
         }
+
+        this.update = ( value ) =>
+        {
+            Object.keys( value ).forEach( axis =>
+            {
+                this.value[ axis ] = value[ axis ];
+
+                var input = this.components.find( input => input.name == axis );
+                    input.value = value[ axis ];
+            } );
+        }
     }
-}
+};

@@ -75,31 +75,31 @@
     z-index: 20;
     position: absolute;
     top: 0;
-    left: calc( 5px - 12vw ) !important;
-    width: 12vw;
-    min-height: 20vh;
-    max-height: 100vh;
-    border-right: 1px dotted #666;
-    border-bottom: 1px dotted #666;
-    padding: 10px;
-    overflow-x: hidden;
-    overflow-y: auto;
+    left: 0;
+    width: calc( 85vw - 4px );
+    height: 24px;
+    padding: 2px;
     background-color: rgba( 0, 0, 0, 0.8 );
-
-    transition: left 2s ease-in-out 5s;
 }
 
-.container.expand
+.dropdown
 {
-    left: 0 !important;
-
-    transition: left 2s;
+    border: 1px solid #666;
+    border-top: none;
+    border-radius: 4px;
+    position: absolute;
+    top: 34px;
+    min-width: 10vw;
+    height: 0;
+    display: none;
+    transition: height 2s ease-in-out 5s;
 }
 
-.debug
+.dropdown.expand
 {
-    font-size: 1.5em;
-    color: cyan;
+    height: auto;
+    display: block;
+    transition: height 2s;
 }
 
 .group
@@ -298,6 +298,27 @@ progress[ value ]::-webkit-progress-value
     border-bottom: 1px dotted silver;
 }
 
+.toolbar
+{
+    display: inline-block;
+    border-radius: 4px;
+    border: 1px solid #333;
+    background-color: #111;
+    width: 32px;
+    height: 32px;
+    text-align: center;
+    color: silver;
+    font-size: 2em;
+    line-height: 32px;
+    cursor: pointer;
+}
+
+.toolbar:hover
+{
+    border: 1px solid #666;
+    background-color: #333;
+}
+
 .truncate
 {
     max-height: 1.2em;
@@ -318,4 +339,20 @@ progress[ value ]::-webkit-progress-value
     color: silver;
     font-size: 1.2em;
     padding-left: 10px;
+}
+
+.widget
+{
+    z-index: 20;
+    position: absolute;
+    padding: 0;
+    margin: 0;
+    user-select: none;
+    bottom: 0;
+    right: 0;
+    width: 15vw;
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background-color: rgba( 0, 0, 0, 0.8 );
 }

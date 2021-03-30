@@ -112,6 +112,7 @@ UI.forms =
                 this.ui.modal.classList.add( "hide" );
 
                 this.init();
+                this.ui.toolbar.append( { icon: 128274, title: "Sign Out", action: UI.forms.process.logout } );
             }.bind( this );
         },        
         createUser: function( data, success, denied )

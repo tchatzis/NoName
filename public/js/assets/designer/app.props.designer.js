@@ -1,14 +1,16 @@
 const Designer = function()
 {
+    var app = {};
     var scope = this;
     var axes = [ "x", "y", "z" ];
     var colors = [ 0x110000, 0x001100, 0x000011 ];
 
     scope.init = function( args )
     {
+        Object.assign( app, this );
         Object.assign( scope, args );
 
-        scope.groups = {};
+        scope.groups = [];
         scope.colors = [];
         scope.current = {};
 
@@ -17,7 +19,7 @@ const Designer = function()
             snap: 0.5,
             grid:
             {
-                size: { x: 60, y: 10, z: 60 },
+                size: { x: 40, y: 10, z: 40 },
                 spacing: { x: 5, y: 1, z: 5 }
             }
         };
@@ -49,19 +51,13 @@ const Designer = function()
         Object.assign( scope.crosshairs, new Helpers.Crosshairs() );
         scope.group.add( scope.crosshairs.group );
 
-        scope.planes = {};
+        /*scope.planes = {};
         scope.planes.group = new THREE.Group();
         scope.planes.group.name = "planes";
         Object.assign( scope.planes, new Helpers.Planes( scope.planes.group ) );
-        scope.group.add( scope.planes.group );
+        scope.group.add( scope.planes.group );*/
 
-        scope.current =
-        {
-            data: {},
-            group: scope.group.name,
-            params: {},
-            path: []
-        };
+        scope.current = new Data();
 
         Process.init();
     };
@@ -115,51 +111,247 @@ const Designer = function()
         }
     };*/
 
+    function Data()
+    {
+        this.params = {};
+
+        Object.defineProperty( this, "assign",
+        {
+            enumerable: false,
+            value: ( key, object ) => Object.assign( this[ key ], object )
+        } );
+
+        Object.defineProperty( this, "get",
+        {
+            enumerable: false,
+            value: ( key ) => this[ key ]
+        } );
+
+        Object.defineProperty( this, "set",
+        {
+            enumerable: false,
+            value: ( key, value ) => this[ key ] = value
+        } );
+
+        Object.defineProperty( this, "setGroup",
+        {
+            enumerable: false,
+            value: ( name, group, parent ) =>
+            {
+                this.name = name;
+                this.group = group || new THREE.Group();
+                this.group.name = name;
+                this.group.userData.group = name;
+
+                parent.add( this.group );
+            }
+        } );
+
+        Object.defineProperty( this, "setGroups",
+        {
+            enumerable: false,
+            value: ( breadcrumbs ) =>
+            {
+                function traverse( index, parent )
+                {
+                    var name = breadcrumbs[ index ];
+                    var group = parent.children.find( child => child.name == name );
+
+                    index++;
+
+                    if ( name )
+                    {
+                        this.setGroup( name, group, parent );
+
+                        traverse.call( this, index, this.group );
+                    }
+                }
+
+                traverse.call( this, 0, scope.parent );
+            }
+        } );
+
+        Object.defineProperty( this, "watch",
+        {
+            enumerable: false,
+            value: () =>
+            {
+                for ( let key in this )
+                    if ( this.hasOwnProperty( key ) )
+                        console.warn( key, this[ key ] );
+            }
+        } );
+    }
+
     const Process =
     {
+        grid:
+        {
+            toggle: ( event ) => scope.grid.group.visible = event.target.value,
+            translate: ( event ) =>
+            {
+                var input = event.target;
+                var axis = input.name;
+                var value = Number( input.value );
+
+                Raycaster.snap[ axis ] = value % 1 || scope.settings.snap;
+                scope.grid.group.position[ axis ] = value;
+
+                // update the add field in the array
+                if ( Process.hooks.points )
+                {
+                    let field = Process.hooks.points.points.fields.find( field => field.label == "add" );
+                        field.update( scope.grid.group.position.clone() );
+                }
+            }
+        },
         group:
         {
-            add: ( event ) =>
+            add: ( detail ) =>
             {
-                Forms.points.edit( event );
+                var name = detail.field.value;
+                var params = Object.assign( {}, detail.params );
+                    params.value = { color: "#" + app.utils.hex(), name: name, parent: detail.params.value };
+                    params.map = detail.params.map + "." + name;
+
+                scope.current.assign( "params", params );
+                scope.current.setGroups( detail.breadcrumbs );
+
+                if ( name )
+                {
+                    // initialize group
+                    let group = new THREE.Group();
+                        group.name = name;
+                        group.userData.group = name;
+
+                    let parent = scope.current.group;
+                        parent.add( group );
+
+                    scope.current.set( "data", params.data );
+                    scope.current.set( "group", group );
+                    scope.current.set( "name", name );
+
+                    scope.current.data.groups[ name ] = params.value;
+
+                    // save group to db
+                    app.setters.db( scope.current.params );
+
+                    // initialize points
+                    let map = [];
+                        map.push( "points" );
+                        map.push( name );
+
+                    let points =
+                    {
+                        map: map.join( "." ),
+                        path: scope.current.params.path,
+                        value: scope.current.data.points[ name ] || {}
+                    };
+
+                    scope.current.data.points[ name ] = points.value;
+                    scope.current.watch();
+
+                    // save points to db
+                    app.setters.db( points, Forms.points.edit );
+                }
+            },
+            breadcrumbs: ( key, detail ) =>
+            {
+                var delim = ".";
+
+                detail.breadcrumbs.forEach( name =>
+                {
+                    var value = name == scope.group.name || !detail.params.value;
+
+                    var map = detail.params.map.split( delim );
+                        map.push( name );
+                        map.push( key );
+
+                    var params =
+                    {
+                        path: detail.params.path,
+                        map: map.join( delim ),
+                        value: value
+                    };
+
+                    app.setters.db( params );
+                } );
+            },
+            define: ( data ) =>
+            {
+                // scene graph
+                var root = {};
+                var sorted = Object.keys( data ).sort();
+
+                for ( let k of sorted )
+                {
+                    let obj = data[ k ];
+
+                    if ( !obj.parent )
+                    {
+                        root.data = obj;
+                        root.group = scope.group;
+                    }
+
+                    let parent = data[ obj.parent ] || { name: obj.name, color: obj.color };
+                        parent.children = [ ...parent.children || [], obj ];
+                }
+
+                function traverse( args )
+                {
+                    var data = args.data;
+                    var parent = args.group;
+
+                    scope.groups.push( parent );
+
+                    // reiterate
+                    if ( data.hasOwnProperty( "children" ) )
+                    {
+                        data.children.forEach( child =>
+                        {
+                            var group = scope.group.getObjectByName( child.name, true ) || new THREE.Group();
+                                group.name = child.name;
+                                group.userData.group = child.name;
+                                group.visible = child.visible;
+
+                            parent.add( group );
+
+                            var args =
+                            {
+                                data: child,
+                                group: group
+                            };
+
+                            traverse( args );
+                        } );
+                    }
+                }
+
+                traverse( root );
+            },
+            expansion: ( event ) =>
+            {
+                Process.group.breadcrumbs( "expand", event.detail );
             },
             select: ( event ) =>
             {
-                scope.current.group = event.detail.value;
-                scope.current.data = event.detail.params.data;
+                Forms.points.edit();
 
-                var parent = scope.group;
+                Process.group.visibility( event );
+            },
+            visibility: ( event ) =>
+            {
+                event.detail.params.value = event.detail.params.visible;
 
-                // tree selection to groups hierarchy
-                event.detail.breadcrumbs.forEach( name =>
-                {
-                    var group = parent.getObjectByName( name );
+                delete event.detail.params.visible;
 
-                    if ( !group )
-                    {
-                        group = new THREE.Group();
-                        group.name = name;
-                        group.userData.group = name;
-                    }
-
-                    if ( parent !== group )
-                        parent.add( group );
-
-                    parent = group;
-                } );
-
-                // plot if points defined
-                if ( scope.current.data.points.hasOwnProperty( scope.current.group ) )
-                    Objects.plot.group( scope.current.group );
-
-                Forms.points.edit( event );
+                Process.group.breadcrumbs( "visible", event.detail );
             }
         },
         hooks: {},
         init: () =>
         {
-            UI.modal.clear();
-            UI.modal.show();
+            UI.init();
             Forms.project.select();
             Process.mode.set( { points: "select" } );
         },
@@ -177,36 +369,88 @@ const Designer = function()
         {
             add: () =>
             {
-                // add from form
-                Process.points.close();
+                // points > array > vector > +
+                var map = scope.current.params.map.split( "." );
+                var set = map[ map.length - 1 ];
+                var points = scope.current.params.data.points[ scope.current.name ];
+                    points[ set ] = scope.current.params.value;
+
                 Process.points.save();
-            },
-            close: () =>
-            {
-                // close path button visibility
-                if ( scope.current.params.value.length > 2 )
-                    Process.hooks.points.close.element.parentNode.classList.remove( "hide" );
-                else
-                    Process.hooks.points.close.element.parentNode.classList.add( "hide" );
             },
             change: () =>
             {
                 // change from form
                 Process.points.save();
             },
+            create: () =>
+            {
+                // create new set
+                // points > set > control > +
+
+                // move up the map to set the object
+                var data = {};
+                var map = scope.current.params.map.split( "." ).reverse();
+                    map.forEach( ( key, i ) => data = { [ key ]: i ? data : [] } );
+                var set = map[ 0 ];
+
+                // set the new value to the current data
+                function traverse( object, data )
+                {
+                    for ( let key in object )
+                    {
+                        if ( object.hasOwnProperty( key ) && data.hasOwnProperty( key ) )
+                        {
+                            if ( typeof object[ key ] == "object" )
+                            {
+                                traverse( object[ key ], data[ key ] );
+                                // append the value
+                                Object.assign( object[ key ], data[ key ] );
+                                // clone the objects
+                                Object.assign( data[ key ], object[ key ] );
+                            }
+                        }
+                    }
+                }
+
+                traverse( scope.current.params.data, data );
+
+                Process.hooks.points.points.refresh( { data: scope.current.params.value } );
+                Process.hooks.points.points.element.parentNode.classList.remove( "hide" );
+                Process.hooks.points.check( set );
+
+                Process.points.save();
+            },
             delete: () =>
             {
-                // group > set > controls > delete( map )
-                app.db.deleteField( scope.current.params, () =>
+                // points > set > controls > -
+                app.db.deleteField( scope.current.params, ( response ) =>
                 {
                     var map = scope.current.params.map.split( "." );
-                        map.pop();
-                    
-                    delete scope.current.params.value;
-                    
-                    scope.current.params.map = map.join( "." );
+                    var set = map.pop();
+                    var args =
+                    {
+                        group: scope.current.group,
+                        set: set
+                    };
+                    var points = scope.current.params.data.points[ scope.current.name ];
 
+                    // remove the map and update the data
+                    scope.current.assign( "params", { data: response.data, map: map.join( "." ), set: set } );
+
+                    delete scope.current.params.value;
+                    delete points[ set ];
+
+                    // hide the array
                     Process.hooks.points.points.element.parentNode.classList.add( "hide" );
+                    // change button states
+                    Process.hooks.points.check( set );
+                    // reset the field value
+                    Process.hooks.points.set.update( "" );
+                    // update the points array
+                    Process.hooks.points.points.refresh( { data: [] } );
+
+                    // clear the drawing
+                    Objects.plot.delete( args );
                 } );
             },
             highlight: ( point ) =>
@@ -217,14 +461,13 @@ const Designer = function()
             },
             remove: () =>
             {
-                // remove from form
-                Process.points.close();
+                // points > set > array > vector > -
                 Process.points.save();
             },
             reorder: ( elements ) =>
             {
                 // group > set > array > drag()
-                var array = { ...scope.current.data };
+                var array = { ...scope.current.params.data };
                 var map = scope.current.params.map.split( "." );
                     map.forEach( key => array = array[ key ] );
                 var dragged = Number( elements.dragged.dataset.index );
@@ -240,25 +483,24 @@ const Designer = function()
             },
             reset: () =>
             {
-                // group > set > controls > reset( value = [] )
+                // points > set > controls > []
                 var map = scope.current.params.map.split( "." );
-                var name = map.pop();
+                var set = map.pop();
 
-                scope.current.params.value = [];
-                scope.current.data.points[ scope.current.group ][ name ] = scope.current.params.value;
+                scope.current.assign( "params", { value: [] } );
+                scope.current.params.data.points[ scope.current.name ][ set ] = scope.current.params.value;
 
+                Process.hooks.points.set.update( set );
                 Process.hooks.points.points.refresh( { data: scope.current.params.value } );
 
                 Process.points.save();
             },
             save: () =>
             {
+                //console.warn( "save", scope.current );
+
                 // save to db
-                app.setters.db( scope.current.params, scope.current.params.value, () =>
-                {
-                    //console.log( scope.current.group, scope.current.params );
-                    Objects.plot.group( scope.current.group );
-                } );
+                app.setters.db( scope.current.params, () => Objects.plot.group( scope.current.group ) );
             },
             select: () =>
             {
@@ -271,8 +513,7 @@ const Designer = function()
                     {
                         let marker = intersection.object;
                         let set = Process.hooks.points.set;
-                            set.value = marker.userData.set;
-                            set.element.value = set.value;
+                            set.update( marker.userData.set );
                         let event = set.handlers.find( handler => handler.event == "select" );
                             event.handler( marker.userData.group, marker.userData.set );
 
@@ -283,18 +524,27 @@ const Designer = function()
             set: () =>
             {
                 // set from mouse click
-                if ( Object.keys( scope.current.params ).length )
+                if ( scope.current.params.data.hasOwnProperty( "points" ) )
                 {
-                    var position = scope.cursor.object.position.clone();
-                    var vector = {};
+                    let points = scope.current.params.data.points[ scope.current.name ];
+                    let position = scope.cursor.object.position.clone();
+                    let vector = {};
+                    let map = scope.current.params.map.split( "." );
+                    let set = map[ map.length - 1 ];
 
                     // convert from THREE.Vector3
                     Object.keys( position ).forEach( axis => vector[ axis ] = position[ axis ] );
 
-                    scope.current.params.value.push( vector );
+                    //console.log( scope.current.name, points, set, map );
 
-                    Process.hooks.points.points.refresh( { data: scope.current.params.value } );
-                    Process.points.save();
+                    if ( points.hasOwnProperty( set ) )
+                    {
+                        scope.current.params.value.push( vector );
+                        points[ set ] = scope.current.params.value;
+
+                        Process.hooks.points.points.refresh( { data: scope.current.params.value } );
+                        Process.points.save();
+                    }
                 }
             },
             unlight: ( point ) =>
@@ -308,26 +558,56 @@ const Designer = function()
         {
             load: ( event ) =>
             {
-                UI.modal.cancel();
-                UI.widget.clear();
-                UI.widget.show();
+                UI.cancel( app.ui.modal );
+                UI.reset( app.ui.widget );
 
+                Process.group.define( event.detail.params.data.groups );
+
+                scope.current.set( "project", event.detail.params.value.name );
+                scope.current.set( "params", event.detail.params );
+                scope.current.set( "name", scope.group.name );
+
+                //console.warn( event.detail );
+                //
+
+                Objects.plot.all();
+
+                // TODO: move further down the pipeline
                 Raycaster.initialize();
                 Listeners.initialize();
 
-                Forms.group.select( event );
+                // TODO: define toools
+                //app.ui.toolbar.prepend( { icon: parseInt( "1F50E", 16 ), title: "Inspect", action: () => {} } );
+                //app.ui.toolbar.prepend( { icon: 9776, title: "Layer Visibility", action: () => {} } );
+                Forms.grid.settings();
+                Forms.group.select();
             },
-            select: ( event ) =>
+            select: () =>
             {
-                UI.modal.clear();
-                UI.modal.show();
-                Forms.group.select( event );
+                UI.cancel( app.ui.modal );
+                UI.reset( app.ui.widget );
+
+                Forms.group.select();
             }
         }
     };
 
     const Forms =
     {
+        grid:
+        {
+            settings: () =>
+            {
+                var form = new DB.Forms();
+                    form.init( { parent: app.ui.widget, title: "Grid" } );
+                    form.add( { name: "position", label: "position", type: "vector", value: { x: 0, y: 0, z: 0 }, parent: "", required: true,
+                        data: { output: false },
+                        handlers: [ { event: "input", handler: Process.grid.translate } ] } );
+                    form.add( { name: "visibility", label: "visibility", type: "toggle", value: { on: true }, parent: "", required: true,
+                        data: { output: false, source: [ { on: true }, { off: false } ] },
+                        handlers: [ { event: "click", handler: Process.grid.toggle } ] } );
+            }
+        },
         project:
         {
             select: () =>
@@ -350,55 +630,28 @@ const Designer = function()
         },
         group:
         {
-            select: ( event ) =>
+            select: () =>
             {
-                var path = [ "projects", event.detail.data.name ];
+                var path = [ "projects", scope.current.project ];
                 var map = "groups";
                 var select = new DB.Forms();
                     select.init( { parent: app.ui.widget, title: "Select Group" } );
-                    select.add( { name: "parent", label: "name", type: "tree", value: scope.current.group, parent: "",
+                var tree = select.add( { name: "parent", label: "name", type: "tree", value: "", parent: "", add: Process.group.add,
                         data: { output: "name", source: { getter: app.getters.db, params: { path: path.join( "/" ), map: map } } },
-                        handlers: [ { event: "validated", handler: function( event )
-                        {
-                            parent.value = this.value;
-                            parent.element.value = this.value;
-                            Process.group.select( event );
-                        } } ]
+                        handlers: [ { event: "validated", handler: Process.group.select }, { event: "expansion", handler: Process.group.expansion } ]
                     } );
-                var create = new DB.Forms();
-                    create.init( { parent: app.ui.widget, title: "Add Group", collapsed: true } );
-                var parent = create.add( { name: "parent", label: "parent", type: "hidden", value: scope.current.group, parent: "", required: true,
-                        data: { output: true } } );
-                    create.add( { name: "name", label: "name", type: "text", value: "", parent: "", required: true,
-                        data: { output: true } } );
-                    create.add( { name: "color", label: "color", type: "color", value: "", parent: "", required: true,
-                        data: { output: true } } );
-                    create.add( { name: "add", label: "", type: "validate", value: "add", parent: "",
-                        data: { output: false, destination: { setter: app.setters.db, params: { path: path.join( "/" ), map: map } } },
-                        handlers: [ { event: "validated", handler: function ( event )
-                            {
-                                event.detail.params.map = map + "." + event.detail.data.name;
-                                create.message.add( event.detail.data.name, `${ event.detail.params.map } updated`, "formconfirm" );
-
-                                Process.group.add( event );
-                            }
-                        } ]
-                    } );
-
-                scope.current.path = path;
             }
         },
         points:
         {
-            edit: ( event ) =>
+            edit: () =>
             {
                 var map = "points";
-                var data = event.detail.params.data;
-                var object = data[ map ][ event.detail.value ] || {};
+                var data = scope.current.params.data;
+                var object = data[ map ][ scope.current.name ] || {};
                 var array = [];
 
-                scope.current.data = data;
-
+                // change set
                 function change( group, set )
                 {
                     if ( set )
@@ -409,43 +662,75 @@ const Designer = function()
                             _map.push( set );
 
                         array = object[ set ] || [];
-                        points.refresh( { data: array } );
-                        scope.current.params =
+                        
+                        Process.hooks.points.points.refresh( { data: array } );
+
+                        scope.current.assign( "params",
                         {
-                            path: scope.current.path.join( "/" ),
                             value: array,
                             map: _map.join( "." )
-                        };
+                        } );
 
-                        controls.element.parentNode.classList.remove( "hide" );
-                        points.element.parentNode.classList.remove( "hide" );
-
-                        Process.points.close();
+                        Process.hooks.points.controls.element.parentNode.classList.remove( "hide" );
+                        Process.hooks.points.points.element.parentNode.classList.remove( "hide" );
                     }
                     else
                         Forms.points.hide();
+
+                    check( set );
+                }
+
+                // set control states
+                function check( set )
+                {
+                    var object = scope.current.params.data[ map ][ scope.current.name ] || {};
+                    var add = Process.hooks.points.controls.buttons.find( button => button.title == "add" );
+                        add.disabled = object[ set ];
+                    var reset = Process.hooks.points.controls.buttons.find( button => button.title == "reset" );
+                        reset.disabled = !add.disabled;
+                    var del = Process.hooks.points.controls.buttons.find( button => button.title == "delete" );
+                        del.disabled = !add.disabled;
+
+                    if ( add.disabled )
+                    {
+                        add.element.classList.add( "formdisabled" );
+                        reset.element.classList.remove( "formdisabled" );
+                        del.element.classList.remove( "formdisabled" );
+
+                        Process.hooks.points.points.element.parentNode.classList.remove( "hide" );
+                    }
+                    else
+                    {
+                        add.element.classList.remove( "formdisabled" );
+                        reset.element.classList.add( "formdisabled" );
+                        del.element.classList.add( "formdisabled" );
+
+                        Process.hooks.points.points.element.parentNode.classList.add( "hide" );
+                    }
                 }
 
                 var form = new DB.Forms();
-                    form.init( { name: "points", parent: app.ui.widget, title: `${ event.detail.value } Points` } );
-                var group = form.add( { name: "group", label: "group", type: "hidden", value: event.detail.value, parent: "", required: true,
+                    form.init( { name: "points", parent: app.ui.widget, title: `${ scope.current.name } Points` } );
+                var group = form.add( { name: "group", label: "group", type: "hidden", value: scope.current.name, parent: "", required: true,
                         data: { output: true } } );
-                var set = form.add( { name: "set", label: "set name", type: "datalist", value: "", parent: "", required: true,
+                var set = form.add( { name: "set", label: "segment name", type: "datalist", value: "", parent: "", required: true,
                         data: { output: true, source: { getter: app.getters.object, params: { data: object } } },
                         handlers:
                         [
-                            { event: "input", handler: ( e ) => change( event.detail.value, e.target.value ) },
+                            { event: "input", handler: ( e ) => change( scope.current.name, e.target.value ) },
                             { event: "select", handler: change }
                         ]
                     } );
                 var controls = form.add( { name: "controls", label: "", type: "controls", value: "", parent: "", hidden: true,
                         buttons:
                         [
+                            { icon: "+", action: Process.points.create, title: "add", disabled: true },
                             { icon: "[]", action: Process.points.reset, title: "reset" },
                             { icon: "-", action: Process.points.delete, title: "delete" }
                         ],
-                        data: { output: false } } );
-                var points = form.add( { name: "array", label: "points", type: "array", value: { x: 0, y: 0, z: 0 }, parent: "", required: true, hidden: true,
+                        data: { output: false }
+                    } );
+                var points = form.add( { name: "array", label: "points", type: "array", value: { x: 0, y: scope.grid.group.position.y, z: 0 }, parent: "", required: true, hidden: true,
                         data: { output: true, field: { type: "vector" }, source: { getter: app.getters.object, params: { data: array } } },
                         handlers:
                         [
@@ -457,9 +742,6 @@ const Designer = function()
                             { event: "drop", handler: Process.points.reorder }
                         ]
                     } );
-                var close = form.add( { name: "close", label: "", value: "close path", type: "button", hidden: true,
-                    data: { output: false },
-                    handlers: [ { event: "click", handler: Process.lines.close } ] } );
 
                 Process.hooks.points =
                 {
@@ -467,14 +749,13 @@ const Designer = function()
                     set: set,
                     controls: controls,
                     points: points,
-                    close: close
+                    check: check
                 };
             },
             hide: () =>
             {
                 Process.hooks.points.controls.element.parentNode.classList.add( "hide" );
                 Process.hooks.points.points.element.parentNode.classList.add( "hide" );
-                Process.hooks.points.close.element.parentNode.classList.add( "hide" );
             },
             highlight: ( index ) =>
             {
@@ -488,7 +769,6 @@ const Designer = function()
                     } );
             }
         }
-
     };
 
     const Helpers =
@@ -508,7 +788,7 @@ const Designer = function()
                 {
                     group: scope.crosshairs.group,
                     points: [ p, q ],
-                    color: new THREE.Color( colors[ i ] )
+                    color: new THREE.Color( 0x111111 )//colors[ i ]
                 };
 
                 this[ axis ] = Objects.lines.add( args );
@@ -606,7 +886,7 @@ const Designer = function()
             document.addEventListener( 'mousedown', Mouse.down, false );
             document.addEventListener( 'mouseup',   Mouse.up, false );
             document.addEventListener( 'click',     Listeners.click, false );
-            document.addEventListener( 'dblclick',  UI.modal.cancel, false );
+            document.addEventListener( 'dblclick',  () => UI.cancel( app.ui.modal ), false );
         },
         click: ( event ) =>
         {
@@ -657,9 +937,10 @@ const Designer = function()
         {
             add: ( group, size, color ) =>
             {
-                const geometry = new THREE.BoxBufferGeometry( size, size, size );
-                const material = new THREE.MeshBasicMaterial( { color: color, wireframe: true } );
-                const mesh = new THREE.Mesh( geometry, material );
+                var geometry = new THREE.BoxBufferGeometry( size, size, size );
+                var material = new THREE.MeshBasicMaterial( { color: color, wireframe: true } );
+                var mesh = new THREE.Mesh( geometry, material );
+                    mesh.userData = group.userData;
 
                 group.add( mesh );
     
@@ -685,7 +966,7 @@ const Designer = function()
                     var line = scope.crosshairs[ axis ];
                         line.geometry.attributes.position.needsUpdate = true;
                     var positions = line.geometry.attributes.position.array;
-                    var _axes = [ ...axes ]
+                    var _axes = [ ...axes ];
                         _axes.splice( i, 1 );
                         _axes.forEach( _axis =>
                         {
@@ -701,6 +982,13 @@ const Designer = function()
             move: ( position ) => scope.cursor.object.position.copy( position ),
             visibility: ( bool ) => scope.cursor.object.visible = bool
         },
+        dispose: ( parent, object ) =>
+        {
+            object.geometry.dispose();
+            object.material.dispose();
+
+            parent.remove( object );
+        },
         /*labels:
         {
             add: ( point, label ) =>
@@ -714,6 +1002,18 @@ const Designer = function()
         },*/
         lines:
         {
+            
+            /*close: () =>
+            {
+                var args =
+                {
+                    group: scope.group.getObjectByName( scope.current.name, true ),
+                    points: [ scope.current.params.value[ scope.current.params.value.length - 1 ], scope.current.params.value[ 0 ] ],
+                    color: scope.current.color
+                };
+
+                Objects.lines.add( args );
+            },*/
             add: ( args ) =>
             {
                 var geometry = new THREE.BufferGeometry().setFromPoints( args.points );
@@ -727,28 +1027,12 @@ const Designer = function()
 
                 return lines;
             },
-            close: () =>
-            {
-                var args =
-                {
-                    group: scope.group.getObjectByName( scope.current.group, true ),
-                    points: [ scope.current.params.value[ scope.current.params.value.length - 1 ], scope.current.params.value[ 0 ] ],
-                    color: scope.current.color
-                };
-
-                Objects.lines.add( args );
-            },
-            draw: ( args ) =>
-            {
-                Objects.lines.remove( args );
-                Objects.lines.add( args );
-            },
             remove: ( args ) =>
             {
                 args.group.children.forEach( line =>
                 {
                     if ( line.userData.set == args.set )
-                        args.group.remove( line );
+                        Objects.dispose( args.group, line );
                 } );
             }
         },
@@ -762,34 +1046,40 @@ const Designer = function()
                     marker.object.userData.set = args.set;
                     marker.object.userData.index = args.index;
             },
-            clear: ( args ) =>
-            {
-                [ ...scope.markers.group.children ].forEach( child =>
-                {
-                    if ( child.userData.group == args.group.name )
-                        scope.markers.group.remove( child );
-                } );
-            },
             highlight: ( point ) =>
             {
                 var position = new THREE.Vector3();
                 var map = scope.current.params.map.split( "." );
-                var name = map.pop();
+                var set = map.pop();
 
                 Object.keys( point ).forEach( axis => position[ axis ] = point[ axis ] );
 
-                [ ...scope.markers.group.children ].forEach( child =>
+                scope.markers.group.children.forEach( child =>
                 {
-                    if ( child.userData.group == scope.current.group && child.userData.set == name && child.position.equals( position ) )
+                    if ( child.userData.group == scope.current.name && child.userData.set == set && child.position.equals( position ) )
                          child.material.color = new THREE.Color();
                 } );
             },
             remove: ( args ) =>
             {
-                [ ...scope.markers.group.children ].forEach( child =>
+                /*var count = scope.markers.group.children.length;
+
+                for ( let i = count - 1; i > 0; i-- )
+                {
+                    let child = scope.markers.group.children[ i ];
+
+                    console.warn ( child.userData.set, args.set, child.userData.set == args.set )
+                    console.log ( scope.markers.group.children.length )
+
+                    if ( child.userData.group == args.group.name && child.userData.set == args.set )
+                        Objects.dispose( scope.markers.group, child );
+
+                }*/
+
+                scope.markers.group.children.forEach( child =>
                 {
                     if ( child.userData.group == args.group.name && child.userData.set == args.set )
-                        scope.markers.group.remove( child );
+                        Objects.dispose( scope.markers.group, child );
                 } );
             },
             toggle: ( args ) =>
@@ -804,14 +1094,14 @@ const Designer = function()
             {
                 var position = new THREE.Vector3();
                 var map = scope.current.params.map.split( "." );
-                var name = map.pop();
+                var set = map.pop();
 
                 Object.keys( point ).forEach( axis => position[ axis ] = point[ axis ] );
 
-                [ ...scope.markers.group.children ].forEach( child =>
+                scope.markers.group.children.forEach( child =>
                 {
-                    if ( child.userData.group == scope.current.group && child.userData.set == name && child.position.equals( position ) )
-                         child.material.color = new THREE.Color( scope.current.color );
+                    if ( child.userData.group == scope.current.name && child.userData.set == set && child.position.equals( position ) )
+                         child.material.color = scope.current.get( "color" );
                 } );
             }
         },
@@ -843,21 +1133,36 @@ const Designer = function()
         {
             all: () =>
             {
-                var points = scope.current.data.points;
+                var points = scope.current.params.data.points;
 
-                for ( let group in points )
-                    if ( points.hasOwnProperty( group ) )
+                for ( let name in points )
+                    if ( points.hasOwnProperty( name ) )
+                    {
+                        let group = scope.groups.find( group => name == group.name );
+
                         Objects.plot.group( group );
+                    }
+
+                //scope.groups.forEach( group => console.log( group.name, group.parent.name, group.visible ) );
             },
-            group: ( name ) =>
+            delete: ( args ) =>
             {
-                var points = scope.current.data.points[ name ];
-                var groups = scope.current.data.groups;
-                var group  = scope.group.getObjectByName( name, true );
+                Objects.lines.remove( args );
+                Objects.markers.remove( args );
+            },
+            group: ( group ) =>
+            {
+                console.warn( group, scope.current.name );
 
-                scope.current.color = groups[ name ].color;
+                var points = scope.current.params.data.points[ group.name ];
+                var groups = scope.current.params.data.groups;
+                var color  = Tools.color( groups[ group.name ].color );// || scope.current.color;
 
-                Objects.markers.clear( { group: group } );
+
+
+                //group.visible = scope.group.name == scope.current.name || !groups[ scope.current.name ].visible;
+
+                //scope.current.set( "color", new THREE.Color( color ) );
 
                 for ( let set in points )
                     if ( points.hasOwnProperty( set ) )
@@ -867,25 +1172,27 @@ const Designer = function()
                             group: group,
                             set: set,
                             points: points[ set ],
-                            color: groups[ name ].color
-                        }
+                            color: color
+                        };
 
                         Objects.plot.points( args );
                     }
             },
             points: ( args ) =>
             {
-                Objects.markers.remove( args );
-
-                args.points.forEach( ( point, i ) =>
+                /*args.points.forEach( ( point, i ) =>
                 {
                     args.point = point;
                     args.index = i;
+
+                    Objects.markers.remove( args );
                     Objects.markers.add( args );
-                } );
+                } );*/
+
+                Objects.lines.remove( args );
 
                 if ( args.points.length > 1 )
-                    Objects.lines.draw( args );
+                    Objects.lines.add( args );
             }
         },
         /*points:
@@ -914,7 +1221,7 @@ const Designer = function()
             },
             remove: ( points, point ) => points.splice( Process.points.index, 1 ),
             replace: ( points, point ) => points.splice( Process.points.index, 0, point )
-        },*/
+        },
         remove: ( group, object ) =>
         {
             var objects = Tools.isArray( object ) ? object : [ object ];
@@ -933,7 +1240,24 @@ const Designer = function()
             } );
 
             return objects;
-        }
+        },*/
+        /*toggle: ( breadcrumbs ) =>
+        {
+            var array = [ ...breadcrumbs ].shift();
+
+            function bubble( group )
+            {
+                if ( array.indexOf( group.name ) > -1 )
+                    group.visible = true;
+            }
+
+            scope.current.visible = !scope.current.visible;
+
+            scope.current.group.visible = scope.current.visible;
+
+            if ( scope.current.group.visible )
+                scope.current.group.traverseAncestors( bubble );
+        }*/
     };
 
     const Raycaster =
@@ -952,17 +1276,17 @@ const Designer = function()
         {
             switch ( Raycaster.mode )
             {
-                case "y":
+                /*case "y":
                     Raycaster.intersects = [ scope.planes.y, scope.planes.z ];
-                break;
+                break;*/
 
                 case "xz":
-                    Raycaster.intersects = [ scope.planes.x ];
+                    Raycaster.intersects = [ scope.grid.object ];//[ scope.planes.x ];
                 break;
             }
 
-            if ( Raycaster.select )
-                Raycaster.intersects = [ scope.planes.x ].concat( scope.markers.group.children );
+            //if ( Raycaster.select )
+            //    Raycaster.intersects = [ scope.planes.x ].concat( scope.markers.group.children );
 
             Raycaster.intersect = Raycaster.raycaster.intersectObjects( Raycaster.intersects );
         },
@@ -976,19 +1300,20 @@ const Designer = function()
 
             if ( Raycaster.enabled )
             {
-                let position = scope.cursor.object.position.clone();
+                let position = new THREE.Vector3();
                     position.set( ...Tools.snap( Raycaster.intersect[ 0 ].point, Raycaster.snap.clone() ) );
 
                 Objects.cursor.move( position );
                 Objects.cursor.visibility( Process.points.enabled );
                 Objects.crosshairs.move( position );
-                Objects.planes.move( position );
+                //Objects.planes.move( position );
             }
         }
-    }
+    };
 
     const Tools =
     {
+        color: ( value ) => value.substring( value.length - 7 ),
         snap: ( point, spacing ) =>
         {
             spacing = spacing || scope.grid.spacing;
@@ -1038,30 +1363,25 @@ const Designer = function()
 
     const UI =
     {
-        message: ( message ) => console.warn( message ),
-        modal:
+        add: ( element, parent ) => parent.appendChild( element ),
+        cancel: ( parent ) =>
         {
-            add:   ( element ) => app.ui.modal.appendChild( element ),
-            cancel: () =>
-            {
-                UI.modal.clear();
-                UI.modal.hide();
-            },
-            clear: () => app.ui.modal.innerHTML = null,
-            hide:  () => app.ui.modal.classList.add( "hide" ),
-            show:  () => app.ui.modal.classList.remove( "hide" )
+            UI.clear( parent );
+            UI.hide( parent );
         },
-        widget:
+        clear: ( parent ) => parent.innerHTML = null,
+        hide: ( parent ) => parent.classList.add( "hide" ),
+        init: () =>
         {
-            add:   ( element ) => app.ui.widget.appendChild( element ),
-            cancel: () =>
-            {
-                UI.widget.clear();
-                UI.widget.hide();
-            },
-            clear: () => app.ui.widget.innerHTML = null,
-            hide:  () => app.ui.widget.classList.add( "hide" ),
-            show:  () => app.ui.widget.classList.remove( "hide" )
-        }
+            UI.reset( app.ui.modal );
+
+        },
+        message: ( message ) => console.warn( message ),
+        reset: ( parent ) =>
+        {
+            UI.clear( parent );
+            UI.show( parent );
+        },
+        show: ( parent ) => parent.classList.remove( "hide" )
     };
 };

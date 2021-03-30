@@ -83,10 +83,13 @@ input:disabled
     border: 1px solid silver;
     border-radius: 4px;
     display: block;
-    max-height: 30vh;
-    overflow-y: auto;
     text-align: left;
     position: relative;
+}
+
+.formadd
+{
+    margin-left: 10px;
 }
 
 .formarray
@@ -99,8 +102,9 @@ input:disabled
 .formbutton
 {
     display: inline-block;
-    font-size: 1.4em;
-    font-weight: bold;
+    line-height: 21px;
+    font-size: 17px;
+    font-family: Courier, Monaco, monospace;
     text-align: center;
     color: cyan;
     cursor: pointer;
@@ -120,7 +124,7 @@ input:disabled
 
 .formcollapsed
 {
-    height: 19px;
+    height: 17px;
     overflow-y: hidden;
 }
 
@@ -140,6 +144,12 @@ input:disabled
 .formconfirm
 {
     color: green;
+}
+
+.formdisabled
+{
+    pointer-events: none;
+    color: #333;
 }
 
 .formerror
@@ -172,7 +182,13 @@ input:disabled
     border: 1px solid red !important;
 }
 
-.formitem, .formlist
+.formadd, .formitem, .formlist
+{
+    display: flex;
+    align-items: center;
+}
+
+.formitem > span
 {
     color: silver;
     font-size: 12px;
@@ -180,15 +196,14 @@ input:disabled
     padding: 4px 10px 4px 10px;
     border: 1px solid #666;
     border-radius: 4px;
-    background-color: black;
     white-space: nowrap;
     text-align: left;
+    background-color: black;
 }
 
-.formitem:hover
+.formitem > span:hover
 {
     cursor: pointer;
-    color: black;
     background-color: #008080;
 }
 
@@ -214,7 +229,28 @@ input:disabled
 
 .formselected
 {
-    background-color: #333;
+    background-color: #333 !important;
+}
+
+.formshrink
+{
+    height: 0;
+    transition: height 0.5s ease-out;
+}
+
+.formswitch
+{
+    cursor: pointer;
+    text-align: center;
+    line-height: 10px;
+    font-size: 1em;
+    color: #666;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 2px;
+    margin-right: 4px;
+    height: 12px;
+    width: 12px;
 }
 
 .formtitle
@@ -228,14 +264,14 @@ input:disabled
 .formtree
 {
     overflow-y: auto;
-    max-height: 0;
+    height: 0;
     min-width: 125px;
-    transition: max-height 0.5s ease-out;
+    transition: height 0.5s ease-out;
     pointer-events: auto;
 }
 
 .formtreeexpand
 {
-    max-height: 20vh;
-    transition: max-height 0.5s ease-out;
+    height: auto;
+    transition: height 0.5s ease-out;
 }

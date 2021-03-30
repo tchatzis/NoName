@@ -64,14 +64,15 @@ const Utils = function()
             row.appendChild( title );
             row.appendChild( progress );
 
-            app.ui.container.appendChild( row );
+            // TODO: reinstate
+            //app.ui.container.appendChild( row );
         }.bind( this );
 
         this.update = function( args )
         {
             var value = args.value ? args.value / this.limit : 0;
 
-            app.ui.container.classList.add( "expand" );
+            //app.ui.container.classList.add( "expand" );
 
             title.innerText = `${ args.label } ( ${ args.value.toFixed() } / ${ this.limit } )`;
             progress.value = value;
@@ -366,8 +367,7 @@ const Utils = function()
             else
             {
                 app[ scope ].fps = Math.round( total / ( sample - delay ) );
-                app.ui.debug.innerText = app[ scope ].fps + " fps";
-                app.ui.container.classList.remove( "expand" );
+                console.warn( `${ app[ scope ].fps } fps` );
 
                 var event = new Event( "framerate" );
                 document.dispatchEvent( event );
@@ -484,7 +484,7 @@ const Utils = function()
     // random hex color
     app[ scope ].hex = function()
     {
-        return 0xffffff * Math.random();
+        return Math.random().toString( 16 ).slice( 2, 8 );
     };
 
     // returns random element from array or object

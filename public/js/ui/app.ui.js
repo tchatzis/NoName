@@ -4,24 +4,6 @@ const UI = function()
     var app = this;
         app[ scope ] = {};
 
-    var listen = function()
-    {
-        app[ scope ].container.classList.add( "expand" );
-
-        [ "container" ].forEach( div =>
-        {
-            app[ scope ][ div ].addEventListener( "mouseover", () =>
-            {
-                app[ scope ][ div ].classList.add( "expand" );
-            } );
-
-            app[ scope ][ div ].addEventListener( "mouseout", () =>
-            {
-                app[ scope ][ div ].classList.remove( "expand" );
-            } );
-        } );
-    };
-
     var elements = function()
     {
         return {
@@ -51,37 +33,60 @@ const UI = function()
                 cl: [ "container" ],
                 parent: document.body
             },
+            dropdown:
+            {
+                el: document.createElement( "div" ),
+                cl: [ "dropdown" ],
+                parent: document.body
+            },
             raycasting:
             {
                 el: document.createElement( "div" ),
                 cl: [ "raycasting" ],
                 parent: document.body
             },
-            logout:
-            {
-                el: UI.forms.display.logout(),
-                cl: [],
-                parent: "container"
-            },
-            debug:
-            {
-                el: document.createElement( "div" ),
-                cl: [ "debug" ],
-                parent: "container"
-            },
-            submenu:
-            {
-                el: document.createElement( "div" ),
-                cl: [ "submenu" ],
-                parent: "container"
-            },
-            navigation: 
+            navigation:
             {
                 el: document.createElement( "div" ),
                 cl: [ "navigation" ],
                 parent: document.body
             }
         }
+    };
+
+    // toolbar ( container ) button constructor
+    function button( data )
+    {
+        var code = String.fromCodePoint( data.icon );
+        //var string = data.icon.charCodeAt( 0 );
+
+        console.log( data.icon, code );
+
+        var button = document.createElement( "div" );
+            button.classList.add( "toolbar" );
+            button.innerText = String.fromCodePoint( data.icon );
+            button.title = data.title;
+            button.addEventListener( "click", function()
+            {
+                var bbox = this.getBoundingClientRect();
+
+                data.action( bbox.left, data.params );
+            } );
+
+        return button;
+    }
+
+    app[ scope ].drop = function( left, content )
+    {
+        app[ scope ].dropdown.style.left = left + "px";
+        app[ scope ].dropdown.classList.toggle( "expand" );
+        app[ scope ].dropdown.appendChild( content );
+    };
+    
+    app[ scope ].toolbar =
+    {
+        append: ( data ) => app[ scope ].container.appendChild( button( data ) ),
+        prepend: ( data ) => app[ scope ].container.prepend( button( data ) )
     };
 
     app[ scope ].row = function( data )
@@ -143,5 +148,4 @@ const UI = function()
     };
 
     render();
-    listen();
 };
