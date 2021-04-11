@@ -85,6 +85,8 @@ input:disabled
     display: block;
     text-align: left;
     position: relative;
+    max-height: 30vh;
+    overflow-y: auto;
 }
 
 .formadd
@@ -124,7 +126,7 @@ input:disabled
 
 .formcollapsed
 {
-    height: 17px;
+    height: 15px;
     overflow-y: hidden;
 }
 
@@ -157,14 +159,6 @@ input:disabled
     color: red;
 }
 
-.formheading
-{
-    color: orange;
-    font-size: 1.2em;
-    margin-top: 5px;
-    margin-bottom: 2px;
-}
-
 .formhighlight
 {
     background-color: transparent;
@@ -188,7 +182,7 @@ input:disabled
     align-items: center;
 }
 
-.formitem > span
+.formitem > span, .formlink
 {
     color: silver;
     font-size: 12px;
@@ -201,18 +195,26 @@ input:disabled
     background-color: black;
 }
 
-.formitem > span:hover
+.formitem > span:hover, .formlink:hover
 {
     cursor: pointer;
     background-color: #008080;
 }
 
-.formlabel
+.formkey
 {
     margin: 0;
     padding: 0 4px 0 6px;
     display: inline-block;
     vertical-align: middle;
+}
+
+.formlabel
+{
+    color: orange;
+    font-size: 1.2em;
+    margin-top: 5px;
+    margin-bottom: 2px;
 }
 
 .formlist
@@ -225,6 +227,21 @@ input:disabled
     background-color: transparent;
     width: 125px;
     overflow-x: hidden;
+}
+
+.formmax
+{
+    width: 100%;
+}
+
+.formmax > span
+{
+    width: 60%;
+}
+
+.formright
+{
+    float: right;
 }
 
 .formselected
@@ -248,9 +265,15 @@ input:disabled
     border: 1px solid #333;
     border-radius: 4px;
     padding: 2px;
+    margin-left: 4px;
     margin-right: 4px;
     height: 12px;
     width: 12px;
+}
+
+.formswitch:hover
+{
+    color: white;
 }
 
 .formtitle

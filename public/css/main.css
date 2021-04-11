@@ -4,7 +4,7 @@
     --scrollbar-foreground: rgba( 255, 255, 255, 0.4 );
 }
 
-html, body
+html, body, #renderer
 {
     margin: 0;
     border: 0;

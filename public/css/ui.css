@@ -102,6 +102,11 @@
     transition: height 2s;
 }
 
+.false
+{
+    color: #666 !important;
+}
+
 .group
 {
     width: 100%;
@@ -188,6 +193,12 @@
 .number
 {
     color: lime !important;
+}
+
+.popup
+{
+    position: absolute;
+    z-index: 100;
 }
 
 .pre
@@ -317,6 +328,11 @@ progress[ value ]::-webkit-progress-value
 {
     border: 1px solid #666;
     background-color: #333;
+}
+
+.true
+{
+    color: silver !important;
 }
 
 .truncate

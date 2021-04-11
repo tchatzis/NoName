@@ -157,22 +157,6 @@ DB.Forms = function()
         return valid;
     }
 
-    function wrap( element )
-    {
-        var heading = element.getAttribute( "placeholder" ) || "<br>";
-
-        let label = document.createElement( "div" );
-            label.classList.add( "formheading" );
-            label.innerHTML = heading;
-
-        let div = document.createElement( "div" );
-            div.classList.add( "formcolumn" );
-
-            div.appendChild( label );
-            div.appendChild( element );
-
-        return element.type == "hidden" ? element : div;
-    }
 
     // private classes
     function Form()
@@ -205,6 +189,9 @@ DB.Forms = function()
 
         state();
 
+        if ( !this.parent )
+            Popup.call( this );
+
         if ( !existing )
             this.parent.appendChild( this.form );
 
@@ -219,6 +206,31 @@ DB.Forms = function()
 
             state();
         }
+    }
+
+    function Label()
+    {
+        this.labeling = document.createElement( "div" );
+        this.labeling.classList.add( "formlabel" );
+        this.labeling.innerHTML = String( this.label ) ? this.label : "<br>";
+
+        var div = document.createElement( "div" );
+            div.classList.add( "formcolumn" );
+
+            div.appendChild( this.labeling );
+            div.appendChild( this.element );
+
+        var el = ( this.hidden || this.element.type == "hidden" ) ? this.element : div;
+
+        this.parent.appendChild( el );
+
+        this.labeler = ( label ) =>
+        {
+            this.labeling.innerHTML = label;
+
+            if ( !String( label ) )
+                this.labeling.remove();
+        };
     }
 
     function Message()
@@ -268,6 +280,56 @@ DB.Forms = function()
             this.messages.classList.add( "formmessages" );
 
             scope.form.appendChild( this.messages );
+        };
+    }
+
+    function Popup()
+    {
+        this.destroy = () => this.parent.remove();
+
+        var close = document.createElement( "div" );
+            close.classList.add( "formswitch" );
+            close.classList.add( "formright" );
+            close.innerText = "x";
+            close.addEventListener( "click", this.destroy, false );
+
+        var bar = document.createElement( "div" );
+            bar.appendChild( close );
+
+        this.form.prepend( bar );
+
+        var popup = document.querySelector( `[ data-popup = "${ this.name }" ]` ) || document.createElement( "div" );
+            popup.setAttribute( "data-popup", this.name );
+            popup.classList.add( "popup" );
+            popup.style.maxHeight = "100vh";
+
+        document.body.appendChild( popup );
+
+        this.parent = popup;
+        this.x = 0;
+        this.y = 0;
+
+        this.popup = ( target ) =>
+        {
+            var abox = target.getBoundingClientRect();
+            var bbox = popup.getBoundingClientRect();
+            var x = abox.left + abox.width;
+            var y = abox.top + abox.height;
+            var left = x <= window.innerWidth ? x - ( abox.width + bbox.width ) : window.innerWidth - x;
+            var top = Math.min( Math.max( 0, y - bbox.height ), window.innerHeight - bbox.height );
+
+            this.x = left;
+            this.y = top;
+
+            this.position();
+        };
+
+        this.position = () =>
+        {
+            var px = "px";
+
+            popup.style.left = this.x + px;
+            popup.style.top = this.y + px;
         };
     }
 
@@ -329,17 +391,26 @@ DB.Forms = function()
             case "vector":
                 Vector.call( this );
             break;
+
+            case "vertical":
+                Vertical.call( this );
+            break;
         }
 
         // events
         switch( this.type )
         {
             case "array":
-                // event handlers for arrays are set per item in Arrays()
+            case "vertical":
+                // event handlers for arrays are set per item
             break;
 
             default:
-                this.handlers.forEach( type => this.element.addEventListener( type.event, type.handler, false ) );
+                this.handlers.forEach( type =>
+                {
+                    this.element.removeEventListener( type.event, type.handler, false )
+                    this.element.addEventListener( type.event, type.handler, false );
+                } );
             break;
         }
 
@@ -376,6 +447,8 @@ DB.Forms = function()
                 };
             break;
         }
+        
+        this.validate = () => validate( this );
     }
 
     function Arrays()
@@ -389,7 +462,8 @@ DB.Forms = function()
         this.element.setAttribute( "data-uuid", scope.uuid );
         this.element.setAttribute( "name", this.name );
         this.element.setAttribute( "placeholder", this.label );
-        this.parent.appendChild( wrap( this.element ) );
+
+        Label.call( this );
 
         this.handlers.forEach( type =>
         {
@@ -406,7 +480,8 @@ DB.Forms = function()
                 {
                     var args = { name: i, label: i, value: value, data: data, drop: true,
                         buttons: [ { icon: "-", action: remove, title: "remove" } ],
-                        handlers: [ { event: "input", handler: handlers.input } ] };
+                        handlers: [ { event: "input", handler: handlers.change } ] };
+
                     this.fields.push( row.call( this, args ) );
                 } );
 
@@ -435,8 +510,8 @@ DB.Forms = function()
 
             field.refresh( { data: args.data } );
 
-            if ( handlers.remove )
-                handlers.remove( { detail: args } );
+            if ( handlers.delete )
+                handlers.delete( { detail: args } );
         }
 
         function row( args )
@@ -444,8 +519,8 @@ DB.Forms = function()
             args.parent = document.createElement( "div" );
             args.parent.setAttribute( "data-index", args.name );
             args.parent.classList.add( "formhighlight" );
-            args.parent.addEventListener( "mouseover", () => mouseover( args.data[ args.name ] ), false );
-            args.parent.addEventListener( "mouseout", () => mouseout( args.data[ args.name ] ), false );
+            args.parent.addEventListener( "mouseover", () => mouseover( { index: Number( args.name ), value: args.data[ args.name ] } ), false );
+            args.parent.addEventListener( "mouseout", () => mouseout( { index: Number( args.name ), value: args.data[ args.name ] } ), false );
             if ( args.drop )
             {
                 args.parent.setAttribute( "draggable", true );
@@ -467,16 +542,16 @@ DB.Forms = function()
             return field;
         }
 
-        function mouseover( value )
+        function mouseover( args )
         {
             if ( handlers.mouseover )
-                handlers.mouseover( value );
+                handlers.mouseover( args );
         }
 
-        function mouseout( value )
+        function mouseout( args )
         {
             if ( handlers.mouseout )
-                handlers.mouseout( value );
+                handlers.mouseout( args );
         }
 
         function dragstart( event )
@@ -509,7 +584,7 @@ DB.Forms = function()
                 parent.insertBefore( dragged, dropped );
 
             if ( handlers.drop )
-                handlers.drop( { dragged: dragged, dropped: dropped, parent: parent } );
+                handlers.drop( { dragged: dragged, dropped: dropped, field: field, parent: parent } );
 
             // reset the indices
             parent.childNodes.forEach( ( child, i ) => child.setAttribute( "data-index", i ) );
@@ -542,7 +617,8 @@ DB.Forms = function()
             this.style.color = this.value.replace( square, "" );
             validate( field );
         }, false );
-        this.parent.appendChild( wrap( this.element ) );
+
+        Label.call( this );
 
         this.update = ( value ) =>
         {
@@ -560,7 +636,9 @@ DB.Forms = function()
         this.element.classList.add( "formcolumn" );
         this.element.setAttribute( "data-uuid", scope.uuid );
         this.element.setAttribute( "name", this.name );
-        this.parent.appendChild( wrap( this.element ) );
+
+        Label.call( this );
+        this.labeler( "<br>" );
 
         this.buttons.forEach( button =>
         {
@@ -596,7 +674,8 @@ DB.Forms = function()
             list.value = this.value;
             validate( list );
         }, false );
-        this.parent.appendChild( wrap( this.element ) );
+
+        Label.call( this );
 
         var items = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "datalist" );
             items.innerHTML = null;
@@ -629,12 +708,13 @@ DB.Forms = function()
             field.value = this.value;
             validate( field );
         }, false );
-        this.parent.appendChild( wrap( this.element ) );
+
+        Label.call( this );
     }
 
     function List()
     {
-        var list = this;
+        var handlers = {};
 
         this.required = true;
 
@@ -644,105 +724,167 @@ DB.Forms = function()
         this.element.setAttribute( "value", this.value );
         this.element.setAttribute( "placeholder", this.label );
 
-        var items = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
-            items.innerHTML = null;
-            items.style.textAlign = "left";
+        Label.call( this );
+
+        this.handlers.forEach( type =>
+        {
+            handlers[ type.event ] = type.handler;
+        } );
+
+        var items = this.parent.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
             items.setAttribute( "data-uuid", scope.uuid );
             items.setAttribute( "data-maps", "list" );
             items.setAttribute( "data-name", this.name );
-            items.appendChild( this.element );
 
-        scope.form.appendChild( wrap( items ) );
-        space();
+        this.parent.appendChild( items );
 
-        this.refresh = ( params ) => this.data.source.getter( params, ( response ) =>
+        var state = function( label, value )
+        {
+            var spans = items.querySelectorAll( "span" )
+                spans.forEach( span => span.classList.remove( "formselected" ) );
+
+            if ( this.value == value )
+                label.classList.add( "formselected" );
+        }.bind( this );
+
+        var render = function()
         {
             items.innerHTML = null;
 
-            var columns = this.data.columns || [ this.name ];
-                columns.forEach( column =>
+            var params = this.data.source.params;
+            var data = ( params.value ) ? params.data.filter( item => item[ params.key ] == params.value ) : params.data;
+                data.forEach( obj =>
                 {
-                    let heading = document.createElement( "div" );
-                        heading.innerText = column;
-                        heading.classList.add( "formheading" );
-                        heading.style.display = "inline-block";
-                        heading.style.width = "157px";
+                    var i = 0;
+                    var keys = Object.keys( obj );
+                        keys.sort();
+                        keys.forEach( key =>
+                        {
+                            var value = obj[ key ];
 
-                    items.appendChild( heading );
+                            if ( key !== params.key )
+                            {
+                                let label = document.createElement( "span" );
+                                    label.innerText = key;
+                                    label.addEventListener( "click", ( e ) =>
+                                    {
+                                        e.stopPropagation();
+
+                                        this.update( key )
+
+                                        state( label, key );
+
+                                        if ( handlers.click )
+                                            handlers.click( { detail: { data: value, field: this, item: item } } );
+                                    }, false );
+                                    label.addEventListener( "mouseover", () =>
+                                    {
+                                        if ( handlers.mouseover )
+                                            handlers.mouseover( this, key );
+                                    }, false );
+                                    label.addEventListener( "mouseout", () =>
+                                    {
+                                        if ( handlers.mouseout )
+                                            handlers.mouseout( this, key );
+                                    }, false );
+
+                                let item = document.createElement( "div" );
+                                    item.classList.add( "formitem" );
+                                    item.classList.add( "formmax" );
+                                    item.setAttribute( "data-index", i );
+                                    item.setAttribute( "data-value", key );
+                                    item.appendChild( label );
+
+                                let args =
+                                {
+                                    name: "controls", label: "", type: "controls", value: "", parent: item,
+                                    buttons:
+                                    [
+                                        { icon: "\u2205", action: () => handlers.reset( this, key ), title: "reset" },
+                                        { icon: "-", action: () => handlers.delete( this, key ), title: "delete" }
+                                    ],
+                                    data: { output: false }
+                                };
+
+                                let controls = Object.assign( {}, args );
+                                    controls.type = "controls";
+                                let field = new Field( controls );
+                                    field.labeler( "" );
+
+                                items.appendChild( item );
+                                i++;
+                            }
+                            else
+                            {
+                                // label
+                                let item = document.createElement( "div" );
+                                    item.innerText = value;
+                                    item.classList.add( "formlabel" );
+
+                                items.prepend( item );
+                            }
+                        } );
                 } );
 
-            //var data = this.data.source.map ? response.data[ this.data.source.map ] : response.data;
-            var data = response.data;
-            console.log( data );
+            // add
+            var label = document.createElement( "span" );
 
-            data.forEach( ( object, i ) =>
+            var valid = function()
             {
-                var ordered = [];
-                var row = document.createElement( "div" );
-                    row.classList.add( "formitem" );
-                    row.setAttribute( "data-index", i );
+                var valid = validate( segment );
+                var button = field.buttons.find( button => button.title == "add" );
+                    button.disabled = !valid;
 
-                // define border color
-                var color = function( column, value )
-                {
-                    if ( column && value )
-                        switch ( column.name )
-                        {
-                            case "color":
-                                return ishex( value ) ? value : hex( value );
+                if ( valid )
+                    button.element.classList.remove( "formdisabled" );
+                else
+                    button.element.classList.add( "formdisabled" );
+            };
 
-                            default:
-                                return ishex( data[ value ].color ) ? data[ value ].color : hex( data[ value ].color );
-                        }
-                };
+            var input =
+            {
+                name: "segment", label: "add", type: "text", value: "", parent: label, required: true,
+                data: { output: true, key: "name" },
+                handlers: [ { event: "keyup", handler: valid } ]
+            };
 
-                // add rows and sort columns
-                for ( let k in object )
-                {
-                    if ( object.hasOwnProperty( k ) )
-                    {
-                        let c = columns.findIndex( column => k == column );
+            var segment = new Field( input );
 
-                        if ( c > -1 )
-                        {
-                            ordered[ c ] = { name: k, value: object[ k ] };
+            var add = document.createElement( "div" );
+                add.classList.add( "formmax" );
+                add.appendChild( label );
 
-                            items.appendChild( row );
-                        }
-                    }
-                }
+            var controls =
+            {
+                name: "controls", label: "<br>", type: "controls", value: "", parent: add,
+                buttons:
+                [
+                    { icon: "+", action: () => handlers.add( segment ), title: "add", disabled: true }
+                ],
+                data: { output: false }
+            };
 
-                // add handlers for row
-                this.handlers.forEach( type => row.addEventListener( type.event, function()
-                {
-                    // TODO:
-                    console.error( "see tree", { field: this, data: object, params: list.data.source.params } );
+            var field = new Field( controls );
 
-                    //let event = new CustomEvent( type.event, { detail: { field: this, data: object, params: list.data.source.params } } );
+            items.appendChild( add );
+        }.bind( this );
 
-                    //type.handler( event );
-                }, false ) );
+        this.refresh = ( params, callback ) =>
+        {
+            callback = callback || render;
 
-                // render columns and data
-                ordered.forEach( column =>
-                {
-                    let value = column.value || ""; //object[ column ]
-                    let item = document.createElement( "div" );
-                        item.innerText = value;
-                        item.classList.add( "formlist" );
-                        item.style.borderColor = color( column, value );
-                        item.addEventListener( "click", function()
-                        {
-                            list.value = value;
-                            list.element.value = value;
-                        }, false );
+            this.data.source.getter( params, ( response ) => callback( response, params ) );
+        };
 
-                    row.appendChild( item );
-                } );
-            } );
-        } );
+        this.state = ( value ) =>
+        {
+            var item = items.querySelector( `[ data-value = "${ value }" ]` );
+            var label = item.querySelector( "span" );
 
-        this.refresh( this.data.source.params );
+            state( label, value );
+        };
+
+        this.refresh( this.data.source.params, render );
     }
 
     function Options( parent, callback )
@@ -881,7 +1023,8 @@ DB.Forms = function()
         this.element.setAttribute( "placeholder", this.label );
         this.element.classList.add( "formitem" );
         this.element.appendChild( span );
-        this.parent.appendChild( wrap( this.element ) );
+
+        Label.call( this );
 
         cls( this.value );
 
@@ -897,6 +1040,7 @@ DB.Forms = function()
     function Tree()
     {
         var tree = this;
+        var handlers = {};
 
         this.required = true;
 
@@ -912,7 +1056,12 @@ DB.Forms = function()
             items.classList.toggle( "formtreeexpand" );
         } );
         
-        this.parent.appendChild( wrap( this.element ) );
+        Label.call( this );
+
+        this.handlers.forEach( type =>
+        {
+            handlers[ type.event ] = type.handler;
+        } );
 
         var items = this.parent.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
             items.innerHTML = null;
@@ -923,38 +1072,54 @@ DB.Forms = function()
         
         this.parent.appendChild( items );
 
-        this.refresh = ( params ) => this.data.source.getter( params, ( response ) =>
+        var state = function( label, value )
+        {
+            var spans = items.querySelectorAll( "span" )
+                spans.forEach( span => span.classList.remove( "formselected" ) );
+
+            if ( this.value == value )
+                label.classList.add( "formselected" );
+        }.bind( this );
+
+        var render = ( response, params ) =>
         {
             var i = 0;
             var root;
-            var map = this.data.source.params.map;
-            var data = { ...response.data };
-                data = map ? data[ map ] : data;
-            var sorted = Object.keys( data ).sort();
+            var data = response.data;
+            var keys = data.map( obj => obj[ params.key ] );
+                keys.sort();
+                keys.forEach( ( key, i ) =>
+                {
+                    var obj = data.find( obj => obj[ params.key ] == key );
 
-            for ( let k of sorted )
+                    var parent = data.find( parent => parent[ params.key ] == obj.parent ) || {};
+                        parent.children = [ ...parent.children || [], obj ];
+
+                    if ( !obj.parent )
+                        root = obj;
+                } );
+
+            /*for ( let k of keys )
             {
-                let obj = data[ k ];
+                console.log( k, data[ k ] );
+
+                obj = data[ k ];
+
+                console.log( k, data[ obj.parent ] );
+
+                let parent = data[ obj.parent ];// || { name: obj.name, color: obj.color };
+                    parent.children = [ ...parent.children || [], obj ];
+
+                console.log( k, parent, parent.children, obj );
 
                 if ( !obj.parent )
                     root = obj;
-
-                let parent = data[ obj.parent ] || { name: obj.name, color: obj.color };
-                    parent.children = [ ...parent.children || [], obj ];
-            }
+            }*/
 
             // add child
             function show( add )
             {
                 add.classList.toggle( "hide" );
-            }
-
-            function state( label, value )
-            {
-                tree.parent.querySelectorAll( "span" ).forEach( element => element.classList.remove( "formselected" ) );
-
-                if ( tree.value == value )
-                    label.classList.add( "formselected" );
             }
 
             function expansion( args )
@@ -971,41 +1136,49 @@ DB.Forms = function()
 
                     params.value = args.expand;
 
-                var event = new CustomEvent( "expansion", { detail: { field: tree, breadcrumbs: args.breadcrumbs, params: params } } );
+                var event = new CustomEvent( "expansion", { detail: { field: this, breadcrumbs: args.breadcrumbs, params: params } } );
+                tree.element.dispatchEvent( event );
+            }
+
+            function click( args )
+            {
+                var value = args.value;
+
+                tree.update( value );
+
+                state( args.label, value );
+
+                params.data = response.data;
+                params.value = value;
+                params.visible = args.data.visible;
+
+                // custom event passes breadcrumbs and params.data
+                let event = new CustomEvent( "selection", { detail: { field: tree, breadcrumbs: args.breadcrumbs, params: params } } );
                 tree.element.dispatchEvent( event );
             }
 
             function traverse( args )
             {
                 var data = args.data;
+                var value = data[ params.key ];
                 var parent = args.parent;
-                var breadcrumbs = [ ...args.breadcrumbs, data.name ];
+                var breadcrumbs = [ ...args.breadcrumbs, value ];
                 var level = args.level || 0;
                 var index = args.index || 0;
                 var _i = i;
-                var value = data[ tree.data.output ];
 
                 // elements
                 var icon = document.createElement( "div" );
                     icon.innerText = String.fromCodePoint( 8627 );
                     icon.classList.add( "formswitch" );
+                    icon.setAttribute( "data-value", value );
                 var label = document.createElement( "span" );
                     label.innerText = value;
-                    label.addEventListener( "click", function()
+                    label.classList.add( data.visible );
+                    label.addEventListener( "click", ( e ) =>
                     {
-                        tree.value = value;
-                        tree.element.value = value;
-                        state( this, value );
-
-                        params.data = data;
-                        params.value = value;
-                        params.visible = !!data.visible;
-
-                        console.error( params );
-
-                        // custom event passes breadcrumbs and params.data
-                        let event = new CustomEvent( "validated", { detail: { field: this, breadcrumbs: breadcrumbs, params: params } } );
-                        tree.element.dispatchEvent( event );
+                        e.stopPropagation();
+                        click( { breadcrumbs: breadcrumbs, data: data, label: e.target, value: value } );
                     }, false );
                 var item = document.createElement( "li" );
                     item.classList.add( "formitem" );
@@ -1037,7 +1210,7 @@ DB.Forms = function()
                     icon.style.border = "1px solid transparent";
                 }
                 // add field
-                if ( tree.add )
+                if ( handlers.add )
                 {
                     // new child ( toggled )
                     let add = document.createElement( "li" );
@@ -1061,11 +1234,10 @@ DB.Forms = function()
                         {
                             params.data = response.data;
                             params.value = value;
-                            console.log( params );
 
                             tree.value = input.value;
                             tree.element.value = input.value;
-                            tree.add( { field: tree, breadcrumbs: breadcrumbs, params: params } );
+                            handlers.add( { field: tree, breadcrumbs: breadcrumbs, params: params } );
                         }, false  );
 
                     add.appendChild( icon );
@@ -1082,9 +1254,6 @@ DB.Forms = function()
 
                     item.appendChild( button );
                 }
-
-                //if ( !expand && !!level )
-                //    ul.classList.add( "hide" );
 
                 if ( !data.expand )
                     ul.classList.add( "hide" );
@@ -1137,17 +1306,23 @@ DB.Forms = function()
 
                 traverse( args );
             }
-        } );
+        };
 
-        console.warn( this.data.source.params );
+        this.refresh = ( params, callback ) => this.data.source.getter( params, ( response ) => callback( response, params ) );
+        this.refresh( this.data.source.params, render );
 
-        this.refresh( this.data.source.params );
+        this.state = ( value ) =>
+        {
+            var item = items.querySelector( `[ data-value = "${ value }" ]` );
+            var label = item.querySelector( "span" );
+
+            state( label, value );
+        };
 
         this.update = ( value ) =>
         {
             this.value = value;
             this.element.value = value;
-            this.refresh( this.data.source.params );
         };
     }
 
@@ -1202,7 +1377,7 @@ DB.Forms = function()
             axes.forEach( axis =>
             {
                 var label = document.createElement( "div" );
-                    label.classList.add( "formlabel" );
+                    label.classList.add( "formkey" );
                     label.innerText = axis;
                 var input = document.createElement( "input" );
                     input.setAttribute( "name", axis );
@@ -1219,7 +1394,7 @@ DB.Forms = function()
                 this.element.appendChild( input );
             } );
 
-            this.parent.appendChild( wrap( this.element ) );
+            Label.call( this );
         }
 
         this.update = ( value ) =>
@@ -1232,5 +1407,89 @@ DB.Forms = function()
                     input.value = value[ axis ];
             } );
         }
+    }
+
+    function Vertical()
+    {
+        var handlers = {};
+
+        this.required = true;
+
+        this.element = document.createElement( "input" );
+        this.element.setAttribute( "name", this.name );
+        this.element.setAttribute( "type", "hidden" );
+        this.element.setAttribute( "value", this.value );
+        this.element.setAttribute( "placeholder", this.label );
+
+        Label.call( this );
+
+        this.handlers.forEach( type =>
+        {
+            handlers[ type.event ] = type.handler;
+        } );
+
+        var items = this.parent.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( "div" );
+            items.setAttribute( "data-uuid", scope.uuid );
+            items.setAttribute( "data-maps", "vertical" );
+            items.setAttribute( "data-name", this.name );
+
+        this.parent.appendChild( items );
+
+        var state = function( item, value )
+        {
+            items.childNodes.forEach( element => element.classList.remove( "formselected" ) );
+
+            if ( this.value == value )
+                item.classList.add( "formselected" );
+        }.bind( this );
+
+        var render = function()
+        {
+            items.innerHTML = null;
+
+            var params = this.data.source.params;
+            var data = ( params.value ) ? params.data.filter( item => item[ params.key ] == params.value ) : params.data;
+                data.forEach( obj =>
+                {
+                    var keys = Object.keys( obj );
+                        keys.sort();
+                        keys.forEach( ( key, i ) =>
+                        {
+                            var value = obj[ key ];
+
+                            if ( key !== params.key )
+                            {
+                                let item = document.createElement( "div" );
+                                    item.innerText = key;
+                                    item.classList.add( "formlink" );
+                                    item.setAttribute( "data-index", i );
+                                    item.setAttribute( "data-value", key );
+                                    item.addEventListener( "click", () =>
+                                    {
+                                        this.update( key )
+                                        this.data = value;
+
+                                        state( item, key );
+
+                                        if ( handlers.click )
+                                            handlers.click( { detail: { data: value, field: this, item: item } } );
+                                    } );
+
+                                items.appendChild( item );
+                            }
+                            else
+                            {
+                                let item = document.createElement( "div" );
+                                    item.innerText = value;
+                                    item.classList.add( "formlabel" );
+
+                                items.prepend( item );
+                            }
+                        } );
+                } );
+        }.bind( this );
+
+        this.refresh = ( params, callback ) => this.data.source.getter( params, ( response ) => callback( response, params ) );
+        this.refresh( this.data.source.params, render );
     }
 };

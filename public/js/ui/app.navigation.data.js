@@ -4,6 +4,14 @@ const navdata = function()
     var app = this;
         app[ scope ] = {};
 
+    const Application = function( types, position, rotation )
+    {
+        Default.call( this, types, position, rotation );
+
+        this.type = "applications";
+        this.nosubmenu = true;
+    };
+
     const Background = function( args )
     {
         this.types = [ "background" ];

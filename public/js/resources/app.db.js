@@ -57,21 +57,67 @@ const DB = function()
         return valid.every( item => item );
     }
 
-    function output( ref, callback )
+    function Output( ref, params, callback )
     {
-        ref.onSnapshot( ( snapshot ) =>
+        function data( response )
         {
             var data = [];
 
-            if ( snapshot.docs )
-                data = snapshot.docs.map( doc => doc.data() ) || [];
+            if ( params.map )
+            {
+               if ( response.docs )
+                    data = response.docs.map( doc =>
+                    {
+                        var d = doc.data()[ params.map ];
+                            d[ params.key ] = doc.id;
 
-            if ( snapshot.data )
-                data = snapshot.data() || [];
+                        return d;
+                    } ) || [];
+
+                if ( response.data )
+                    data = response.data()[ params.map ] || [];
+            }
+            else
+            {
+                if ( response.docs )
+                    data = response.docs.map( doc =>
+                    {
+                        var d = doc.data();
+                            d[ params.key ] = doc.id;
+
+                        return d;
+
+                    } ) || [];
+
+
+                if ( response.data )
+                    data = response.data() || [];
+            }
+
+            return data;
+        }
+
+        this.realtime = () => ref.onSnapshot( ( response ) =>
+        {
+            var output = { data: data( response ) };
+
+            //console.log( output );
 
             if ( callback )
-                callback( { data: data } );
+                callback( output );
+
+            return output;
         } );
+
+        this.static = () => ref.get().then( ( response ) =>
+        {
+            var output = { data: data( response ) };
+
+            if ( callback )
+                callback( output )
+
+            return output;
+        } ).catch( app[ scope ].catch );
     }
 
     // add with generated doc id
@@ -82,6 +128,8 @@ const DB = function()
         var ref = getRef( path );
             ref.add( data ).then( callback ).catch( app[ scope ].catch );
     };*/
+
+    //app[ scope ].unsubscribe = {};
 
     app[ scope ].catch = ( error ) => console.error ( error );
 
@@ -95,13 +143,41 @@ const DB = function()
     {
         var ref = getRef( params );
             ref.update( { [ params.map ]: fv.delete() } );
-        output( ref, callback );
+        var output = new Output( ref, params, callback );
+
+        return output[ params.output ]();
     };
+
+    /*app[ scope ].get = ( params, callback ) =>
+    {
+        var ref = getRef( params );
+            ref.get()
+                .then( ( response ) =>
+                {
+                    var data = [];
+
+                    if ( response.docs )
+                        data = response.docs.map( doc => doc.data() ) || [];
+
+                    if ( response.data )
+                        data = response.data() || [];
+
+                    if ( callback )
+                        callback( { data: data } );
+                } )
+                .catch( app[ scope ].catch );
+
+        console.log( ref );
+    };*/
 
     app[ scope ].get = ( params, callback ) =>
     {
+        //console.log( params );
+
         var ref = getRef( params );
-        output( ref, callback );
+        var output = new Output( ref, params, callback );
+
+        return output[ params.output ]();
     };
     
     /*app[ scope ].max = ( key, path, limit, callback ) =>
@@ -155,6 +231,27 @@ const DB = function()
         }
     };*/
 
+    // save a value without a snapshot call
+    /*app[ scope ].save = ( params ) =>
+    {
+        var ref = getRef( params );
+
+        if ( params.map )
+            ref.update( { [ params.map ] : params.value } ).catch( app[ scope ].catch );
+        else
+            ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
+    };*/
+    
+    app[ scope ].addDoc = ( params, callback ) =>
+    {
+        var ref = getRef( params );
+            ref.doc( params.key ).set( params.value ).catch( app[ scope ].catch );
+
+        var output = new Output( ref, params, callback );
+            output[ params.output ]();
+    };
+    
+
     // does not overwrite entire doc
     app[ scope ].set = ( params, callback ) =>
     {
@@ -165,7 +262,11 @@ const DB = function()
         else
             ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
 
-        output( ref, callback );
+        //console.log( params );
+        //console.trace();
+
+        var output = new Output( ref, params, callback );
+            output[ params.output ]();
     };
 
     /*app[ scope ].test = ( params, data, callback ) =>
