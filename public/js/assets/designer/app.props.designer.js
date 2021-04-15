@@ -48,6 +48,7 @@ const Designer = function()
         scope.cursor = {};
         scope.cursor.group = new THREE.Group();
         scope.cursor.group.name = "cursor";
+        scope.cursor.group.visible = Raycaster.enabled;
         scope.cursor.group.userData.ui = true;
         Object.assign( scope.cursor, new Helpers.Marker( scope.cursor.group, 0.1, "white" ) );
         scope.group.add( scope.cursor.group );
@@ -55,6 +56,7 @@ const Designer = function()
         scope.crosshairs = {};
         scope.crosshairs.group = new THREE.Group();
         scope.crosshairs.group.name = "crosshairs";
+        scope.crosshairs.group.visible = Raycaster.enabled;
         scope.crosshairs.group.userData.ui = true;
         Object.assign( scope.crosshairs, new Helpers.Crosshairs() );
         scope.group.add( scope.crosshairs.group );
@@ -313,23 +315,13 @@ const Designer = function()
             },
             expansion: ( event ) =>
             {
-                /*var delim = ".";
-                var detail = event.detail;
-                var key = "expand";
-                var value = !detail.params.value;
+                var group = event.detail.field.getAttribute( "data-value" );
+                var params = { ...event.detail.params };
+                    params.map = "expand";
+                    params.path = params.path + `/${ group }`;
+                    params.value = !params.value;
 
-                var map = detail.params.map.split( delim );
-                    map.push( detail.field.getAttribute( "data-value" ) );
-                    map.push( key );
-
-                var params =
-                {
-                    path: detail.params.path,
-                    map: map.join( delim ),
-                    value: value
-                };
-
-                app.setters.db( params );*/
+                app.setters.db( params );
             },
             opacity: ( obj ) =>
             {
@@ -376,7 +368,8 @@ const Designer = function()
         {
             UI.init();
             Forms.project.select();
-            Process.mode.set( { points: "select" } );
+            Raycaster.mode = "move";
+            Process.mode.set( { points: Raycaster.mode } );
         },
         lines:
         {
@@ -467,11 +460,11 @@ const Designer = function()
                 if ( args.value )
                     Objects.markers.highlight( args );
             },
-            /*remove: () =>
+            move: () =>
             {
-                // points > set > array > vector > -
-                //Process.points.save();
-            },*/
+                Objects.cursor.visibility( Raycaster.enabled );
+                Objects.crosshairs.visibility( Raycaster.enabled );
+            },
             reorder: ( args ) =>
             {
                 var key = args.field.data.source.params.key;
@@ -512,51 +505,52 @@ const Designer = function()
                     field: { value: Raycaster.selected.segment }
                 };
 
-                // update the group tree
-                Process.hooks.group.name.update( name );
-                Process.hooks.group.name.state( name );
+                if ( Mouse.enabled && Raycaster.enabled )
+                {
+                    // update current object
+                    scope.current.set( "name", name );
+                    scope.current.set( "group", scope.group.getObjectByName( name ) );
 
-                // update current object
-                scope.current.set( "name", name );
-                scope.current.set( "group", scope.group.getObjectByName( name ) );
+                    // update the group tree
+                    Process.hooks.group.name.update( name );
+                    Process.hooks.group.name.state( name );
 
-                // update the segments
-                Forms.points.segments();
-                Process.hooks.points.segment.update( Raycaster.selected.segment );
-                Process.hooks.points.segment.state( Raycaster.selected.segment );
+                    // update the segments
+                    Forms.points.segments();
+                    Process.hooks.points.segment.update( Raycaster.selected.segment );
+                    Process.hooks.points.segment.state( Raycaster.selected.segment );
 
-                // update the popup
-                if ( Process.hooks.points && Process.hooks.points.popup )
-                    Process.hooks.points.popup.destroy();
+                    // update the popup
+                    if ( Process.hooks.points && Process.hooks.points.popup )
+                        Process.hooks.points.popup.destroy();
 
-                Forms.points.edit( detail );
+                    Forms.points.edit( detail );
+                }
             },
             set: () =>
             {
-                console.log( scope.current.data );
-                /* set from mouse click
-                if ( scope.current.params.data.hasOwnProperty( "points" ) )
+                var data = scope.current.data.points.find( obj => obj.name == Raycaster.selected.group );
+                var params = {};
+                    params.map = Raycaster.selected.segment;
+                    params.output = "realtime";
+                    params.value = data[ Raycaster.selected.segment ];
+
+                Process.segments.path( params );
+
+                // set from mouse click
+                if ( params.value && Process.hooks.points )
                 {
-                    let points = scope.current.params.data.points[ scope.current.name ];
                     let position = scope.cursor.object.position.clone();
                     let vector = {};
-                    let map = scope.current.params.map.split( "." );
-                    let set = map[ map.length - 1 ];
 
                     // convert from THREE.Vector3
                     Object.keys( position ).forEach( axis => vector[ axis ] = position[ axis ] );
 
-                    //console.log( scope.current.name, points, set, map );
+                    params.value.push( vector );
 
-                    if ( points.hasOwnProperty( set ) )
-                    {
-                        scope.current.params.value.push( vector );
-                        points[ set ] = scope.current.params.value;
-
-                        Process.hooks.points.points.refresh( { data: scope.current.params.value } );
-                        //Process.points.save();
-                    }
-                }*/
+                    Process.hooks.points.array.refresh( { data: params.value } );
+                    Process.points.save( params );
+                }
             },
             unlight: ( args ) =>
             {
@@ -647,7 +641,8 @@ const Designer = function()
         },
         raycaster:
         {
-            move: ( args ) =>
+            move: () => Process.points.move(),
+            select: ( args ) =>
             {
                 var group = scope.group.getObjectByName( args.group );
 
@@ -735,7 +730,8 @@ const Designer = function()
                     Objects.plot.delete( args );
                 } );
 
-                Process.hooks.points.popup.destroy();
+                if ( Process.hooks.points.popup )
+                    Process.hooks.points.popup.destroy();
             },
             highlight: ( group, key ) =>
             {
@@ -801,7 +797,7 @@ const Designer = function()
                         if ( child.userData.segment == key )
                         {
                             child.material.color = new THREE.Color( child.parent.userData.color );
-                            child.material.opacity = scope.settings.opacity;
+                            child.material.opacity = child.userData.group == group.name ? 1 : scope.settings.opacity;
                         }
                 } );
             }
@@ -1025,11 +1021,11 @@ const Designer = function()
     {
         initialize: () =>
         {
-            document.addEventListener( 'keydown',   Listeners.keydown, false );
-            document.addEventListener( 'keyup',     Listeners.keyup, false );
+            //document.addEventListener( 'keydown',   Listeners.keydown, false );
+            //document.addEventListener( 'keyup',     Listeners.keyup, false );
             document.addEventListener( 'mousemove', Mouse.move, false );
             document.addEventListener( 'mousedown', Mouse.down, false );
-            document.addEventListener( 'mouseup',   Mouse.up, false );
+            //document.addEventListener( 'mouseup',   Mouse.up, false );
             document.addEventListener( 'click',     Listeners.click, false );
             document.addEventListener( 'dblclick',  () => UI.cancel( app.ui.modal ), false );
         },
@@ -1040,7 +1036,7 @@ const Designer = function()
             if ( Process.mode.status.points )
                 Process.points[ Process.mode.status.points ]();
         },
-        keydown: ( event ) =>
+        /*keydown: ( event ) =>
         {
             if ( event.key === "Shift" )
             {
@@ -1057,7 +1053,7 @@ const Designer = function()
                 Raycaster.set( "move" );
                 Raycaster.first = false;
             }
-        }
+        }*/
     };
 
     const Mouse =
@@ -1068,7 +1064,7 @@ const Designer = function()
         move: ( event ) =>
         {
             var renderer = app.stage.renderer;
-            
+
             Mouse.enabled = event.target.tagName == "CANVAS";
 
             if ( Mouse.enabled )
@@ -1078,13 +1074,12 @@ const Designer = function()
 
                 Raycaster.update();
             }
-        },
-        up: () => Mouse.enabled = true
+        }
+        //up: () => Mouse.enabled = true
     };
     
     const Objects = 
     {
-
         box:
         {
             add: ( group, size, color ) =>
@@ -1127,7 +1122,8 @@ const Designer = function()
                             positions[ _i + 3 ] = position[ _axis ];
                         } );
                 } );
-            }
+            },
+            visibility: ( bool ) => scope.crosshairs.group.children.forEach( child => child.visible = bool )
         },
         cursor:
         {
@@ -1403,14 +1399,13 @@ const Designer = function()
         },
         intersect: [],
         intersects: [],
-        mode: "move",
         objects: () =>
         {
             switch ( Raycaster.mode )
             {
                 case "add":
                     Raycaster.intersects = [ scope.grid.object ];
-                    Raycaster.action = ( data ) => {};
+                    Raycaster.action = ( args ) => Process.raycaster[ Raycaster.mode ]( args );
                     Raycaster.position = ( point ) =>
                     {
                         var position = Tools.snap( point, Raycaster.snap.clone() );
@@ -1420,6 +1415,11 @@ const Designer = function()
                 break;
 
                 case "move":
+                    Raycaster.action = ( args ) => Process.raycaster[ Raycaster.mode ]( args );
+                    Raycaster.position = ( point ) => point;
+                break
+
+                case "select":
                     Raycaster.intersects = Objects.lines.all( scope.group, [] );
                     Raycaster.action = ( args ) => Process.raycaster[ Raycaster.mode ]( args );
                     Raycaster.position = ( point ) => point;
@@ -1428,12 +1428,11 @@ const Designer = function()
 
             Raycaster.intersect = Raycaster.raycaster.intersectObjects( Raycaster.intersects );
         },
-        set: ( mode ) => Raycaster.mode = mode,
         update: () =>
         {
             Raycaster.raycaster.setFromCamera( Mouse, app.stage.camera );
             Raycaster.objects();
-            Raycaster.enabled = !!Raycaster.intersect.length;
+            Raycaster.enabled = !!Raycaster.intersect.length && Mouse.enabled;
 
             var index = Raycaster.first ? 0 : Raycaster.intersect.length - 1;
 
@@ -1446,7 +1445,6 @@ const Designer = function()
                 Raycaster.action( data );
 
                 Objects.cursor.move( position );
-                Objects.cursor.visibility( Process.points.enabled );
                 Objects.crosshairs.move( position );
             }
         }

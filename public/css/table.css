@@ -1,0 +1,58 @@
+.table-form
+{
+    display: table;
+    border-spacing: 2px;
+    position: absolute;
+    top: 10vh;
+    z-index: 100;
+}
+
+.table-row
+{
+    display: table-row;
+}
+
+.table-row:hover
+{
+    background-color: #333;
+}
+
+.table-add
+{
+    background-color: #033;
+}
+
+.table-add:hover
+{
+    background-color: #033;
+}
+
+.table-cell, .table-number, .table-heading
+{
+    display: table-cell;
+    padding: 0 2px 0 2px;
+    vertical-align: bottom;
+}
+
+.table-cell
+{
+    border-right: 1px dotted #333;
+}
+
+.table-heading
+{
+    pointer-events: none;
+    border-bottom: 1px dotted #333;
+    color: orange;
+    font-size: 1.2em;
+    padding-bottom: 2px;
+    text-align: center;
+}
+
+.table-number
+{
+    color: #666;
+    font-size: 1.2em;
+    max-width: 25px;
+    text-align: right;
+}

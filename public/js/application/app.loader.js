@@ -11,6 +11,7 @@
         { type: 'css', directory: '', name: 'ui.svg' },
         { type: 'css', directory: '', name: 'form' },
         { type: 'css', directory: '', name: 'navigation' },
+        { type: 'css', directory: '', name: 'table' },
         { type: 'css', src: 'https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.css' },
         /** external libraries */
         { type: 'js', directory: 'lib', name: 'ammo' },

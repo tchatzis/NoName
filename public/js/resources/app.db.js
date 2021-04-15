@@ -262,9 +262,6 @@ const DB = function()
         else
             ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
 
-        //console.log( params );
-        //console.trace();
-
         var output = new Output( ref, params, callback );
             output[ params.output ]();
     };

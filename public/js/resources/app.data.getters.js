@@ -4,17 +4,18 @@ const Getters = function()
 
     app[ scope ] = {};
 
-    app[ scope ].db = ( params, callback ) =>
+    app[ scope ].db = async ( params, callback ) =>
     {
-        app.db.get( params, callback );
+        return await app.db.get( params, callback );
     };
 
     app[ scope ].object = ( params, callback ) =>
     {
         var data = params.data;
+        var result;
 
         if ( Array.isArray( data ) )
-            callback( { data: data } );
+            result = { data: data }
         else if ( typeof data == "object" )
         {
             let array = [];
@@ -23,9 +24,13 @@ const Getters = function()
                 if ( data.hasOwnProperty( key ) )
                     array.push( { [ key ]: data[ key ] } );
 
-            callback( { data: array } );
+            result = { data: array };
         }
         else
-            callback( { data: [ data ] } );
+            result = { data: [ data ] };
+
+        callback( result );
+
+        return result;
     };
 }
