@@ -810,21 +810,56 @@ const Designer = function()
         {
             settings: () =>
             {
-                var form = new DB.Forms();
+                /*var form = new DB.Forms();
                     form.init( { parent: app.ui.widget, title: "Grid" } );
                     form.add( { name: "position", label: "position", type: "vector", value: scope.grid.group.position.clone(), parent: "", required: true,
                         data: { output: false },
                         handlers: [ { event: "input", handler: Process.grid.translate } ] } );
                     form.add( { name: "visibility", label: "visibility", type: "toggle", value: { on: true }, parent: "", required: true,
                         data: { output: false, source: [ { on: true }, { off: false } ] },
-                        handlers: [ { event: "click", handler: Process.grid.toggle } ] } );
+                        handlers: [ { event: "click", handler: Process.grid.toggle } ] } );*/
             }
         },
         project:
         {
             select: () =>
             {
-                var path = [ "projects" ];
+                var form = new DB.Forms();
+                var project = new form.Composite( { name: "Project", parent: app.ui.modal, config: { numbers: false, headings: true } } );
+                    project.init(
+                    [
+                        new project.Col( { name: "name", type: "combo", value: "", source: { key: "name", path: "projects", output: "static" } } ),
+                        new project.Col( { name: null, type: "submit", value: "select" } )
+                    ] );
+
+                console.log( project );
+                
+                /*var test = new form.Composite( { name: "test", parent: document.body } );
+                    test.init(
+                    [
+                        new test.Col( { name: "color", type: "color", value: "996666" } ),
+                        new test.Col( { name: "combo", type: "combo", value: "tito", params: { key: "name", path: "projects", output: "static" } } ),
+                        new test.Col( { name: "cycle", type: "cycle", value: "three", options: [ new test.Option( "one", 1 ), new test.Option( "two", 2 ), new test.Option( "three", 3 ) ] } ),
+                        new test.Col( { name: "input", type: "range", value: 10 } ),
+                        new test.Col( { name: "select", type: "select", value: "two", options: [ new test.Option( "one", 1 ), new test.Option( "two", 2 ), new test.Option( "three", 3 ) ] } ),
+                        new test.Col( { name: "toggle", type: "toggle", options: [ new test.Option( "on", true ), new test.Option( "off", false ) ] } ),
+                        new test.Col( { name: "vector", type: "vector" } ),
+                        new test.Col( { name: null, type: "click", handlers: [ { event: "click", handler: test.action } ] } )
+                    ] );
+
+                    test.element.addEventListener( "loaded", () =>
+                    {
+                        console.log( "data", test.get.data() );
+                        console.log( "defaults", test.get.defaults() );
+                        console.log( "field", test.get.field( 0, 3 ) );
+                        console.log( "schema", test.get.schema() );
+                        console.log( "size", test.get.size() );
+                        console.log( "value", test.get.value( 0, "select" ) );
+                    }, false );
+
+                    test.element.addEventListener( "next", ( e ) => console.log( e.detail ) );*/
+
+                /*var path = [ "projects" ];
                 var form = new DB.Forms();
                     form.init( { parent: app.ui.modal, title: "Project" } );
                     form.add( { name: "name", label: "select", type: "datalist", value: "", parent: "", required: true,
@@ -837,14 +872,14 @@ const Designer = function()
                         } } ] } );
                 var submit = form.add( { name: "submit", label: "", type: "submit", value: "select", parent: "",
                         data: { output: false, destination: { setter: app.setters.db } },
-                        handlers: [ { event: "validated", handler: Process.project.load } ] } );
+                        handlers: [ { event: "validated", handler: Process.project.load } ] } );*/
             }
         },
         group:
         {
             select: () =>
             {
-                var path = [ "projects", scope.current.project, "groups" ];
+                /*var path = [ "projects", scope.current.project, "groups" ];
                 var select = new DB.Forms();
                     select.init( { parent: app.ui.widget, title: "Select Group" } );
                 var tree = select.add( { name: "name", label: "name", type: "tree", value: "", parent: "",
@@ -855,14 +890,14 @@ const Designer = function()
                 Process.hooks.group =
                 {
                     name: tree
-                };
+                };*/
             }
         },
         points:
         {
             edit: ( detail ) =>
             {
-                var key = detail.field.value;
+                /*var key = detail.field.value;
                 var form = new DB.Forms();
                     form.init( { name: "points", parent: null, title: "Points" } );
                 var array = form.add( { name: "array", label: key, type: "array", value: scope.grid.group.position.clone(), parent: "", required: true,
@@ -881,11 +916,11 @@ const Designer = function()
                 Process.hooks.points.popup = form;
                 Process.hooks.points.array = array;
 
-                form.popup( Process.hooks.points.target.form );
+                form.popup( Process.hooks.points.target.form );*/
             },
             segments: () =>
             {
-                var data = scope.current.data.points;
+                /*var data = scope.current.data.points;
                 var form = new DB.Forms();
                     form.init( { name: "segments", parent: app.ui.widget, title: "Segments" } );
                 var group = form.add( { name: "group", label: "group", type: "hidden", value: scope.current.name, parent: "", required: true,
@@ -907,7 +942,7 @@ const Designer = function()
                 {
                     target: form,
                     segment: segment
-                };
+                };*/
             }
         }
     };

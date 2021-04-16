@@ -1,1024 +1,10 @@
+import { Composite } from './modules/form.composite.js';
+
 DB.Forms = function()
 {
-    var scope = this;
-    var ok = "formconfirm";
-    var error = "formerror";
-    var square = "\u2B1B ";
-    var hash = "#";
+    this.Composite = Composite;
 
-    // public methods
-    this.clear = () => scope.form.innerHTML = null;
-
-    this.init = function( args )
-    {            
-        Object.assign( this, args );
-
-        scope.uuid = uuid();
-        scope.fields = [];
-        scope.validate = [];
-        scope.value = {};
-
-        Form.call( this );
-    };
-
-    this.add = function( args )
-    {
-        var field = new Field( args );
-
-        if ( field.data.output )
-        {
-            scope.fields.push( field );
-
-            if ( field.required )
-                scope.validate.push( field.name );
-        }
-
-        return field;
-    };
-
-    function callback( response )
-    {
-        console.warn( "callback", response );
-    }
-
-    function collapse( el )
-    {
-        el.classList.toggle( "formcollapsed" );
-    }
-
-    function dispatch( params )
-    {
-        var event = new CustomEvent( "validated", { detail: { field: this, params: params } } );
-
-        this.element.dispatchEvent( event );
-    }
-
-    function hex( string )
-    {
-        function hashCode()
-        {
-            var hash = 0;
-
-            for ( let i = 0; i < string.length; i++ )
-                hash = string.charCodeAt( i ) + ( ( hash << 5 ) - hash );
-
-            return hash;
-        }
-
-        function intToRGB( string )
-        {
-            var c = ( string & 0x00FFFFFF )
-                .toString( 16 )
-                .toUpperCase();
-
-            return "#" + "00000".substring( 0, 6 - c.length ) + c;
-        }
-
-        return intToRGB( hashCode() );
-    }
-
-    function ishex( value )
-    {
-        return value.length == 7 && !!value.match( /#[a-f0-9]{6}$/gi )
-    }
-
-    function remove( element )
-    {
-        element.parentNode.remove();
-    }
-
-    function space()
-    {
-        var space = document.createElement( "div" );
-            space.classList.add( "break" );
-
-        app.ui.modal.appendChild( space );
-    }
-
-    function uuid()
-    {
-        var dt = new Date().getTime();
-
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, function( c )
-        {
-            var r = ( dt + Math.random() * 16 ) % 16 | 0;
-            dt = Math.floor( dt / 16 );
-            return ( c == 'x' ? r :( r & 0x3 | 0x8 ) ).toString( 16 );
-        } );
-    }
-
-    function match()
-    {
-        var arr1 = scope.validate.sort();
-        var arr2 = Object.keys( scope.value ).sort();
-
-        if ( arr1.length !== arr2.length ) return false;
-
-        for ( var i = 0; i < arr1.length; i++ )
-            if ( arr1[ i ] !== arr2[ i ] ) return false;
-
-        return true;
-    }
-
-
-
-
-    const Utils =
-    {
-        bubble: function( element, css )
-        {
-            while ( !element.classList.contains( css ) )
-            {
-                element = element.parentNode;
-            }
-
-            return element;
-        },
-
-        copy: function( value )
-        {
-            var primitive = value !== Object( value );
-
-            if ( primitive )
-                return value;
-            else
-            {
-                if ( Array.isArray( value ) )
-                    return [ ...value ];
-                else if ( typeof value == "object" && value !== null )
-                    return { ...value };
-                else
-                    console.error( value, typeof value );
-            }
-        },
-
-        create: function( css )
-        {
-            var div = document.createElement( "div" );
-                div.classList.add( css );
-
-            return div;
-        },
-
-        element: function( tag )
-        {
-            var element = document.querySelector( `[ data-name = "${ this.name }" ][ data-uuid = "${ scope.uuid }" ]` ) || document.createElement( tag );
-                element.setAttribute( "data-name", this.name );
-                element.setAttribute( "data-uuid", scope.uuid );
-
-            return element;
-        },
-
-        invoke: async function( args )
-        {
-            var options = async function( params )
-            {
-                var options = [];
-
-                var response = await app.getters.db( params );
-                    response.data.forEach( item => options.push( new this.Option( item[ params.key ] ) ) );
-
-                return options;
-            }.bind( this );
-
-            switch( args.type )
-            {
-                case "click":
-                    args.value = true;
-                    args.options = args.options || [ "-", "+" ];
-                break;
-
-                case "color":
-                    args.value = args.value || "000000";
-                break;
-
-                case "combo":
-                    args.value = args.value || "";
-                    args.options = args.options || await options( args.params );
-                break;
-
-                case "cycle":
-                    args.value = args.value || "";
-                    args.options = args.options || await options( args.params );
-                break;
-
-                case "object":
-                    args.value = args.value || { a: "amanda", b: "bob", c: "cathy", d: "dave" };
-                break;
-
-                case "select":
-                    args.value = args.value || "";
-                    args.options = args.options || await options( args.params );
-                break;
-
-                case "toggle":
-                    args.value = args.value || false;
-                    args.options = args.options || await options( args.params );
-                break;
-
-                case "vector":
-                    args.value = args.value || { x: 0, y: 0, z: 0 };
-                break;
-            }
-
-            return new Field( args );
-        },
-
-        options: function( parent )
-        {
-            this.options.forEach( option =>
-            {
-                var item = document.createElement( "option" );
-                    item.text = option.text;
-                    item.value = option.value;
-
-                if ( option.text == this.value || option.value == this.value )
-                    item.setAttribute( "selected", "" );
-
-                parent.appendChild( item );
-            } );
-        },
-
-        validate: function ( field )
-        {
-            const is =
-            {
-                // checks
-                boolean:    ( value ) => typeof value == "boolean",
-                defined:    ( value ) => typeof value !== "undefined",
-                notnull:    ( value ) => value !== null,
-                number:     ( value ) => typeof value == "number" && !isNaN( value ),
-                populated:  ( value ) => value !== "" && is.notnull( value ) && is.defined( value ),
-                string:     ( value ) => typeof value == "string",
-
-                // types
-                click:      () => true,
-                combo:      () => is.populated( field.value ),
-                color:      () => ( /[a-f0-9]{6}$/gi ).test( field.value ),
-                cycle:      () => is.populated( field.value ),
-                date:       () => Object.prototype.toString.call( field.value ) === '[object Date]',
-                datalist:   () => is.populated( field.value ),
-                hidden:     () => is.populated( field.value ),
-                list:       () => is.populated( field.value ),
-                object:     () => Object.keys( field.value ).every( key => is.populated( field.value[ key ] ) ),
-                range:      () => is.number( Number( field.value ) ),
-                readonly:   () => is.populated( field.value ),
-                select:     () => is.populated( field.value ),
-                text:       () => is.string( field.value ) && is.populated( field.value ),
-                toggle:     () => is.boolean( field.value ),
-                tree:       () => is.text( field.value ),
-                vector:     () => Object.keys( field.value ).every( axis => is.number( field.value[ axis ] ) )
-            };
-
-            if ( !is[ field.type ] )
-                throw( field.type );
-
-            var element = Utils.bubble( field.element, "table-cell" );
-            var valid = is[ field.type ]();
-
-            if ( !valid )
-            {
-                element.classList.add( "forminvalid" );
-                field.element.focus();
-                scope.message.add( field.name, `${ field.name } is not valid`, error, 10 );
-            }
-            else
-            {
-                element.classList.remove( "forminvalid" );
-                scope.message.cancel();
-            }
-
-            return valid;
-        }
-    };
-
-    const Components =
-    {
-        click: function()
-        {
-            var field = this;
-
-            this.required = false;
-            this.value = !this.row;
-
-            this.element = document.createElement( "div" );
-            this.element.classList.add( "formbutton" );
-
-            this.handlers.forEach( type => this.element.addEventListener( type.event, () => type.handler( field ), false ) );
-
-            this.parent.appendChild( this.element );
-
-            this.update = () =>
-            {
-                this.element.innerText = this.options[ this.value - 0 ];
-            };
-
-            this.update();
-        },
-
-        color: function()
-        {
-            var field = this;
-
-            this.color = document.createElement( "div" );
-            this.color.classList.add( "formcolor" );
-
-            this.element = document.createElement( "input" );
-            this.element.setAttribute( "name", this.name );
-            this.element.setAttribute( "type", "text" );
-            this.element.setAttribute( "maxlength", 6 );
-            this.element.setAttribute( "size", 3 );
-            this.element.setAttribute( "spellcheck", false );
-            this.element.setAttribute( "pattern", "[A-Fa-f0-9]{6}" );
-            this.element.addEventListener( "input", function()
-            {
-                field.update( this.value );
-
-                Utils.validate( field );
-            }, false );
-
-            var sxs = document.createElement( "div" );
-                sxs.classList.add( "formsxs" );
-                sxs.appendChild( this.color );
-                sxs.appendChild( this.element );
-
-            this.parent.appendChild( sxs );
-
-            this.update = ( value ) =>
-            {
-                this.data[ this.row ][ this.name ] = value;
-                this.value = value;
-                this.element.value = value;
-                this.color.style.backgroundColor = `${ hash }${ value }`;
-            };
-
-            this.update( this.value );
-        },
-
-        combo: function()
-        {
-            var field = this;
-
-            this.required = true;
-
-            this.element = document.createElement( "input" );
-            this.element.setAttribute( "name", this.name );
-            this.element.setAttribute( "type", "text" );
-            this.element.setAttribute( "value", this.value );
-            this.element.setAttribute( "placeholder", this.name );
-            this.element.setAttribute( "list", "" );
-            this.element.setAttribute( "autocomplete", "off" );
-            this.element.addEventListener( "click", () =>
-            {
-                items.classList.toggle( "hide" );
-            }, false );
-            this.element.addEventListener( "focus", function()
-            {
-                items.style.display = "block";
-
-                for ( let option of items.options )
-                {
-                    option.onclick = function ()
-                    {
-                        field.update( this.value );
-                        Utils.validate( field );
-                        items.classList.add( "hide" );
-                        clearTimeout( timeout );
-                    }
-                }
-
-                items.style.width = this.offsetWidth + 'px';
-                items.style.left = this.offsetLeft + 'px';
-                items.style.top = this.offsetTop + this.offsetHeight + 'px';
-
-                var timeout = setTimeout( () => items.classList.add( "hide" ), 5000 );
-            }, false );
-            this.element.addEventListener( "input", function()
-            {
-                field.update( this.value );
-                Utils.validate( field );
-            }, false );
-
-            var items = document.createElement( "datalist" );
-                items.innerHTML = null;
-                items.classList.add( "hide" );
-                items.setAttribute( "id", this.id );
-
-            var sxs = document.createElement( "div" );
-                sxs.classList.add( "formsxs" );
-                sxs.appendChild( items );
-                sxs.appendChild( this.element );
-
-            this.parent.appendChild( sxs );
-
-            Utils.options.call( this, items, field );
-        },
-
-        cycle: function()
-        {
-            var field = this;
-
-            this.required = true;
-
-            this.element = document.createElement( "div" );
-            this.element.classList.add( "formlink" );
-            this.element.addEventListener( "click", function()
-            {
-                field.index = ( field.index + 1 ) % field.options.length;
-
-                let object = field.options[ field.index ];
-
-                field.update( object.text );
-            } );
-
-            this.parent.appendChild( this.element );
-
-            this.update = ( value ) =>
-            {
-                this.index = this.options.findIndex( option => ( option.text == value || option.value == value ) );
-                this.index = this.index < 0 ? 0 : this.index;
-
-                let object = this.options[ this.index ];
-
-                this.element.innerText = object.text;
-                this.data[ this.row ][ this.name ] = object.value;
-                this.value = object.text;
-            };
-
-            this.update( this.value );
-        },
-
-        input: function()
-        {
-            var field = this;
-            //var type = this.type == "validate" ? "submit" : this.type;
-
-            this.element = document.createElement( "input" );
-            this.element.setAttribute( "name", this.name );
-            this.element.setAttribute( "placeholder", this.name );
-            this.element.setAttribute( "type", this.type );
-            this.element.setAttribute( "value", this.value );
-            this.element.setAttribute( "autocomplete", "off" );
-            if ( this.type == "readonly" )
-                this.element.setAttribute( "readonly", "" );
-            this.element.addEventListener( "input", function()
-            {
-                field.update( this.value );
-
-                Utils.validate( field );
-            }, false );
-
-            this.parent.appendChild( this.element );
-        },
-
-        object: function()
-        {
-            var field = this;
-
-            if ( this.value )
-            {
-                this.element = document.createElement( "div" );
-                this.element.setAttribute( "id", field.id );
-                this.components = [];
-
-                let axes = Object.keys( this.value ).sort();
-                    axes.forEach( axis =>
-                    {
-                        var label = document.createElement( "div" );
-                            label.classList.add( "formkey" );
-                            label.innerText = axis;
-                        var input = document.createElement( "input" );
-                            input.setAttribute( "name", axis );
-                            input.setAttribute( "type", "text" );
-                            input.setAttribute( "value", this.value[ axis ] );
-                            input.addEventListener( "input", function()
-                            {
-                                var value = field.value;
-                                    value[ axis ] = this.value;
-
-                                field.update( value );
-
-                                Utils.validate( field );
-                            }, false );
-
-                        this.components.push( input );
-                        this.element.appendChild( label );
-                        this.element.appendChild( input );
-                    } );
-
-                this.parent.appendChild( this.element );
-            }
-
-            this.update = ( value ) =>
-            {
-                Object.keys( value ).forEach( axis =>
-                {
-                    this.data[ this.row ][ this.name ][ axis ] = value[ axis ];
-                    this.value[ axis ] = value[ axis ];
-
-                    var input = this.components.find( input => input.name == axis );
-                        input.value = value[ axis ];
-                } );
-            }
-        },
-
-        select: function()
-        {
-            var field = this;
-
-            this.required = true;
-
-            this.element = document.createElement( "select" );
-            this.element.innerHTML = null;
-            this.element.setAttribute( "id", field.id );
-            this.element.setAttribute( "name", this.name );
-            this.element.addEventListener( "change", function()
-            {
-                field.update();
-
-                Utils.validate( field );
-            }, false );
-
-            this.parent.appendChild( this.element );
-
-            this.update = () =>
-            {
-                var index = this.element.selectedIndex;
-                var value = this.element.options[ index || 0 ].value;
-
-                this.data[ this.row ][ this.name ] = value;
-                this.value = value;
-                this.element.selectedIndex = index;
-            };
-
-            Utils.options.call( this, this.element );
-        },
-
-        toggle: function()
-        {
-            var field = this;
-
-            this.required = true;
-
-            this.element = document.createElement( "div" );
-            this.element.classList.add( "formlink" );
-            this.element.addEventListener( "click", function()
-            {
-                field.index = 1 - field.index;
-
-                let object = field.options[ field.index ];
-
-                field.update( object.text );
-            } );
-
-            this.parent.appendChild( this.element );
-
-            this.update = ( value ) =>
-            {
-                this.index = this.options.findIndex( option => ( option.text == value || option.value == value ) );
-                this.index = this.index < 0 ? 0 : this.index;
-
-                let object = this.options[ this.index ];
-
-                var action = object.value ? "add" : "remove";
-
-                this.element.classList[ action ]( "formselected" );
-
-                this.element.innerText = object.text;
-                this.data[ this.row ][ this.name ] = object.value;
-                this.value = object.value;
-            };
-
-            this.update( this.value );
-        },
-
-        vector: function()
-        {
-            var field = this;
-
-            if ( this.value )
-            {
-                this.element = document.createElement( "div" );
-                this.element.setAttribute( "id", field.id );
-                this.components = [];
-
-                let axes = Object.keys( this.value ).sort();
-                    axes.forEach( axis =>
-                    {
-                        var label = document.createElement( "div" );
-                            label.classList.add( "formkey" );
-                            label.innerText = axis;
-                        var input = document.createElement( "input" );
-                            input.setAttribute( "name", axis );
-                            input.setAttribute( "type", "number" );
-                            input.setAttribute( "value", this.value[ axis ] );
-                            input.addEventListener( "input", function()
-                            {
-                                var value = field.value;
-                                    value[ axis ] = Number( this.value );
-
-                                field.update( value );
-
-                                Utils.validate( field );
-                            }, false );
-
-                        this.components.push( input );
-                        this.element.appendChild( label );
-                        this.element.appendChild( input );
-                    } );
-
-                this.parent.appendChild( this.element );
-            }
-
-            this.update = ( value ) =>
-            {
-                Object.keys( value ).forEach( axis =>
-                {
-                    this.data[ this.row ][ this.name ][ axis ] = value[ axis ];
-
-                    this.value[ axis ] = value[ axis ];
-
-                    var input = this.components.find( input => input.name == axis );
-                        input.value = value[ axis ];
-                } );
-            }
-        }
-    };
-
-
-
-
-
-    // private classes
-    function Composite( args )
-    {
-        Object.assign( this, args );
-
-        var composite = this;
-        var labels = {};
-
-        // add row and columns
-        var add = async function( columns )
-        {
-            this.table.row.create();
-
-            var promises = [];
-
-            columns.forEach( ( col, index ) => promises.push( this.table.row.col.add( col, index ) ) );
-
-            return Promise.all( promises );
-        }.bind( this );
-
-        var Col = function( row )
-        {
-            this.row = row;
-
-            this.add = async ( args, index ) =>
-            {
-                var element = Utils.create( "table-cell" );
-                    element.setAttribute( "data-col", index );
-                    element.setAttribute( "data-row", this.row.index );
-
-                args.col = index;
-                args.data = composite.data;
-                args.id = `${ composite.name }.${ this.row.index }.${ args.name }`;
-                args.parent = element;
-                args.row = this.row.index;
-
-                this.field = await Utils.invoke.call( composite, args );
-
-                if ( args.name )
-                    composite.data[ this.row.index ][ args.name ] = this.field.value;
-
-                var data =
-                {
-                    col: index,
-                    element: element,
-                    field: this.field,
-                    row: this.row.index
-                };
-
-                this.row.cols.push( data );
-
-                this.row.table.dimensions.cols = Math.max( this.row.table.dimensions.cols, this.row.cols.length );
-
-                return data;
-            };
-        };
-
-        var Row = function( table )
-        {
-            this.table = table;
-
-            // initialize the row
-            this.create = () =>
-            {
-                this.index = this.table.rows.length;
-                this.element = Utils.create( "table-row" );
-                if ( !this.index )
-                    this.element.classList.add( "table-add" );
-                this.cols = [];
-                this.col = new Col( this );
-
-                composite.data.push( {} );
-
-                var data =
-                {
-                    cols: this.cols,
-                    element: this.element,
-                    row: this.index
-                };
-
-                this.table.rows.push( data );
-                this.table.dimensions.rows = Math.max( this.table.dimensions.rows, this.table.rows.length );
-                this.table.element.appendChild( this.element );
-                this.number();
-            };
-
-            // this runs once upon initialization
-            this.define = ( data ) =>
-            {
-                // set the headings and labels
-                var headings = Utils.create( "table-row" );
-                    headings.appendChild( Utils.create( "table-number" ) );
-
-                var heading = function( field )
-                {
-                    labels[ field.col ] = Utils.create( "table-heading" );
-                    headings.appendChild( labels[ field.col ] );
-                    composite.label( field.col, field.name );
-                }.bind( this );
-
-                this.table.element.prepend( headings );
-
-                this.labels = {};
-                this.defaults = [];
-
-                // append the columns in the same order as the fields are defined
-                // put a handle on the fields
-                this.fields = data.map( d =>
-                {
-                    this.element.appendChild( d.element );
-
-                    return d.field;
-                } );
-
-                // sort the columns because they are created asynchronously
-                this.cols.sort( ( a, b ) => a.col > b.col ? 1 : -1 );
-
-                // set the column headings, fields and defaults
-                this.cols.forEach( col =>
-                {
-                    this.defaults.push( Utils.copy( col.field.value ) );
-
-                    heading( col.field );
-                } );
-            };
-
-            this.delete = ( field ) =>
-            {
-                field.data.splice( field.row, 1 );
-
-                var index = composite.table.rows.findIndex( row => row.row == field.row );
-
-                composite.table.rows.splice( index, 1 );
-
-                this.remove( field.element );
-            };
-
-            // populate next row
-            this.next = async () =>
-            {
-                this.index++;
-
-                var columns = [];
-                var validated = [];
-                var values = [];
-
-                this.fields.forEach( ( field, col ) =>
-                {
-                    // disconnect reference to objects
-                    var value = Utils.copy( field.value );
-                    var copy = Object.assign( {}, field );
-                        copy.value = value;
-                    var valid = copy.validate();
-
-                    validated.push( valid );
-                    values.push( { [ copy.name ]: copy.value } );
-
-                    if ( valid )
-                    {
-                        columns.push( new test.Col( copy ) );
-
-                        // reset the field to default value
-                        field.update( Utils.copy( this.defaults[ col ] ) );
-                    }
-                } );
-
-                var valid = validated.every( bool => bool );
-
-                // append the columns in the same order as the fields are defined
-                if ( valid )
-                {
-                    let data = await add( columns );
-                        data.map( d => this.element.appendChild( d.element ) );
-
-                    let event = new CustomEvent( "next", { detail: { row: this.index, values: values } } );
-
-                    composite.events.dispatchEvent( event );
-                }
-            };
-
-            this.number = () =>
-            {
-                var div = Utils.create( "table-number" );
-                    div.innerText = this.index;
-
-                this.element.prepend( div );
-            };
-
-            this.remove = ( element ) =>
-            {
-                var node = Utils.bubble( element, "table-row" );
-                    node.remove();
-            };
-
-            //this.reorder = () => {};
-
-            //this.select = () => {};
-
-            this.validate = () =>
-            {
-                var result = [];
-
-                this.cols.forEach( col =>
-                {
-                    if ( col.field.name && col.field.required )
-                        result.push( col.field.validate() );
-                } );
-
-                return result.every( bool => bool );
-            };
-        };
-
-        var Table = function()
-        {
-            this.dimensions = { cols: 0, rows: 0 };
-
-            this.element = Utils.create( "table-form" );
-
-            this.row = new Row( this );
-
-            this.rows = [];
-
-            composite.parent.appendChild( this.element );
-        };
-
-        // add / delete
-        this.action = ( field ) =>
-        {
-            if ( !field.row )
-                this.table.row.next();
-            else
-                this.table.row.delete( field );
-        };
-
-        // column definition object
-        this.Col = function( args )
-        {
-            // required
-            Object.defineProperty( this, "name",
-            {
-                value: args.name,
-                enumerable: true,
-                writeable: false,
-                configurable: false
-            } );
-
-            this.type = args.type || "text";
-
-            // suggested
-            this.value = args.value || null;
-            this.handlers = args.handlers || [];
-
-            // optional
-            this.col = args.col || 0;
-            this.row = args.row || 0;
-
-            // only if defined
-            if ( args.params )
-                this.params = args.params;
-
-            if ( args.options )
-                this.options = args.options;
-        };
-
-        this.get =
-        {
-            data: () => this.data,
-            defaults: () => this.table.row.defaults,
-            field: ( row, col ) => this.table.rows[ row ].cols[ col ].field,
-            schema: () => this.table.row.fields.map( field => { return { name: field.name, type: field.type } } ),
-            size: () => this.table.dimensions,
-            value: ( row, col ) => this.data[ row ][ col ]
-        };
-
-        this.init = async ( columns ) =>
-        {
-            this.data = [];
-            this.table = new Table();
-            this.events = this.table.element;
-
-            var data = await add( columns );
-
-            this.table.row.define( data );
-
-            var event = new Event( "loaded" );
-
-            this.events.dispatchEvent( event );
-        };
-
-        this.label = ( col, value ) => labels[ col ].innerText = value;
-
-        this.Option = function( text, value )
-        {
-            this.text = text;
-            this.value = typeof value == "undefined" ? text : value;
-        };
-    }
-
-
-    /*var test = new Composite( { name: "test", parent: document.body } );
-        test.init(
-        [
-            new test.Col( { name: "color", type: "color", value: "996666" } ),
-            new test.Col( { name: "combo", type: "combo", value: "tito", params: { key: "name", path: "projects", output: "static" } } ),
-            new test.Col( { name: "cycle", type: "cycle", value: "three", options: [ new test.Option( "one", 1 ), new test.Option( "two", 2 ), new test.Option( "three", 3 ) ] } ),
-            new test.Col( { name: "input", type: "range", value: 10 } ),
-            new test.Col( { name: "select", type: "select", value: "two", options: [ new test.Option( "one", 1 ), new test.Option( "two", 2 ), new test.Option( "three", 3 ) ] } ),
-            new test.Col( { name: "toggle", type: "toggle", options: [ new test.Option( "on", true ), new test.Option( "off", false ) ] } ),
-            new test.Col( { name: "vector", type: "vector" } ),
-            new test.Col( { name: null, type: "click", handlers: [ { event: "click", handler: test.action } ] } )
-        ] );
-
-        test.events.addEventListener( "loaded", () =>
-        {
-            console.log( "data", test.get.data() );
-            console.log( "defaults", test.get.defaults() );
-            console.log( "field", test.get.field( 0, 3 ) );
-            console.log( "schema", test.get.schema() );
-            console.log( "size", test.get.size() );
-            console.log( "value", test.get.value( 0, "select" ) );
-        }, false );
-
-        test.events.addEventListener( "next", ( e ) => console.log( e.detail ) );*/
-
-        /*composite.table.row.add();
-        composite.table.row.col.add( { name: "color", type: "color", value: "996666" } );
-        composite.table.row.col.add( { name: "combo", type: "combo", value: "tito" } );
-        composite.table.row.col.add( { name: "cycle", type: "cycle", value: "three" } );
-        composite.table.row.col.add( { name: "input", type: "range", value: 10 } );
-        composite.table.row.col.add( { name: "select", type: "select", value: "two" } );
-        composite.table.row.col.add( { name: "toggle", type: "toggle" } );
-        composite.table.row.col.add( { name: "vector", type: "vector" } );
-        composite.table.row.col.add( { name: null, type: "click", handlers: [ { event: "click", handler: composite.table.action } ] } );
-        composite.table.row.set();*/
-
-
-
-
-    var project = new Composite( { name: "Project", parent: app.ui.modal } );
-        project.init(
-        [
-            new project.Col( { name: "name", type: "combo", value: "", params: { key: "name", path: "projects", output: "static" } } ),
-            new project.Col( { name: null, type: "submit", value: "select" } )
-        ] );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    function Form()
+    /*function Form()
     {
         var div = document.createElement( "div" );
             div.innerText = this.title;
@@ -1065,10 +51,10 @@ DB.Forms = function()
 
             state();
         }
-    }
+    }*/
 
     // tbr
-    function Label()
+    /*function Label()
     {
         this.labeling = document.createElement( "div" );
         this.labeling.classList.add( "formlabel" );
@@ -1091,9 +77,9 @@ DB.Forms = function()
             if ( !String( label ) )
                 this.labeling.remove();
         };
-    }
+    }*/
 
-    function Message()
+    /*function Message()
     {
         this.add = ( name, message, status, delay ) =>
         {
@@ -1141,9 +127,9 @@ DB.Forms = function()
 
             scope.form.appendChild( this.messages );
         };
-    }
+    }*/
 
-    function Popup()
+    /*function Popup()
     {
         this.destroy = () => this.parent.remove();
 
@@ -1191,155 +177,10 @@ DB.Forms = function()
             popup.style.left = this.x + px;
             popup.style.top = this.y + px;
         };
-    }
-
-    // field definitions
-    function Field( args )
-    {
-        // defaults
-        Object.assign( this, args );
-
-        this.parent = this.parent || scope.form;
-        this.handlers = this.handlers || [];
-
-        // display
-        switch( this.type )
-        {
-            /*case "array":
-                Arrays.call( this );
-            break;*/
-
-            /*case "checkbox":
-            case "color":
-            datetime-local
-            file
-                image
-                month
-                radio
-                search
-                url
-                week*/
-
-            case "button":
-            case "date":
-            case "email":
-            case "hidden":
-            case "number":
-            case "password":
-            case "range":
-            case "readonly":
-            case "submit":
-            case "tel":
-            case "text":
-            case "time":
-                Components.input.call( this );
-            break;
-
-            case "click":
-            case "color":
-            case "combo":
-            case "cycle":
-            case "object":
-            case "select":
-            case "toggle":
-            case "vector":
-                Components[ this.type ].call( this );
-            break;
-
-            /*case "controls":
-                Controls.call( this );
-            break;*/
-
-            case "datalist":
-                DataList.call( this );
-            break;
-
-            /*case "list":
-                List.call( this );
-            break;*/
-
-            /*case "select":
-                Select.call( this );
-            break;*/
-
-            /*case "toggle":
-                Toggle.call( this );
-            break;*/
-
-            /*case "tree":
-                Tree.call( this );
-            break;*/
-
-            /*case "vector":
-                Vector.call( this );
-            break;*/
-
-            /*case "vertical":
-                Vertical.call( this );
-            break;*/
-        }
-
-        // events
-        switch( this.type )
-        {
-            case "array":
-            case "click":
-            case "vertical":
-                // event handlers for arrays are set per item
-            break;
-
-            default:
-                this.handlers.forEach( type =>
-                {
-                    this.element.removeEventListener( type.event, type.handler, false )
-                    this.element.addEventListener( type.event, type.handler, false );
-                } );
-            break;
-        }
-
-        // hidden
-        if ( this.hidden === true )
-            this.element.parentNode.classList.add( "hide" );
-
-        // process
-        switch( this.type )
-        {
-            case "validate":
-                Validate.call( this );
-            break;
-
-            case "submit":
-                Submit.call( this );
-            break;
-        }
-
-        // update value of instance and element
-        switch( this.type )
-        {
-            case "click":
-            case "color":
-            case "cycle":
-            case "select":
-            case "toggle":
-            case "tree":
-            case "vector":
-            break;
-
-            default:
-                this.update = ( value ) =>
-                {
-                    this.data[ this.row ][ this.name ] = value;
-                    this.value = value;
-                    this.element.value = value;
-                };
-            break;
-        }
-
-        this.validate = () => Utils.validate( this );
-    }
+    }*/
 
     // tbr
-    function Arrays()
+    /*function Arrays()
     {
         var field = this;
         var handlers = {};
@@ -1477,10 +318,10 @@ DB.Forms = function()
             // reset the indices
             parent.childNodes.forEach( ( child, i ) => child.setAttribute( "data-index", i ) );
         }
-    }
+    }*/
 
     // tbr
-    function Controls()
+    /*function Controls()
     {
         this.element = Utils.element.call( this, "div" );
         this.element.classList.add( "formcolumn" );
@@ -1503,10 +344,10 @@ DB.Forms = function()
             button.element = div;
             this.element.appendChild( div );
         } );
-    }
+    }*/
 
     // tbr
-    function DataList()
+    /*function DataList()
     {
         var field = this;
 
@@ -1537,10 +378,10 @@ DB.Forms = function()
         this.parent.appendChild( items );
 
         Options.call( this, items );
-    }
+    }*/
 
     // tbr
-    function Input()
+    /*function Input()
     {
         var field = this;
         var type = this.type == "validate" ? "submit" : this.type;
@@ -1736,10 +577,10 @@ DB.Forms = function()
         };
 
         this.refresh( this.data.source.params, render );
-    }
+    }*/
 
     // tbr
-    function Options( parent, callback )
+    /*function Options( parent, callback )
     {
         this.refresh = ( params ) => this.data.source.getter( params, ( response ) =>
         {
@@ -1766,10 +607,10 @@ DB.Forms = function()
         } );
 
         this.refresh( this.data.source.params );
-    }
+    }*/
 
     // tbr
-    function Select()
+    /*function Select()
     {
         var select = this;
 
@@ -1799,15 +640,13 @@ DB.Forms = function()
                 this.value = this.element.options[ this.element.selectedIndex ].value;
                 this.element.setAttribute( "value", this.value );
             } );
-    }
+    }*/
 
-    function Submit()
+    /*function Submit()
     {
-        delete this.name;
-
         console.log( this );
 
-        /*this.element.addEventListener( "click", () =>
+        this.element.addEventListener( "click", () =>
         {
             scope.fields.forEach( field =>
             {
@@ -1840,11 +679,11 @@ DB.Forms = function()
                     dispatch.call( this, params )
                 } );
             }
-        }, false );*/
-    }
+        }, false );
+    }*/
     
     // tbr
-    function Toggle()
+    /*function Toggle()
     {
         var field = this;
         var span = document.createElement( "span" );
@@ -1956,7 +795,7 @@ DB.Forms = function()
                         root = obj;
                 } );
 
-            /*for ( let k of keys )
+            for ( let k of keys )
             {
                 console.log( k, data[ k ] );
 
@@ -1971,7 +810,7 @@ DB.Forms = function()
 
                 if ( !obj.parent )
                     root = obj;
-            }*/
+            }
 
             // add child
             function show( add )
@@ -2181,9 +1020,9 @@ DB.Forms = function()
             this.value = value;
             this.element.value = value;
         };
-    }
+    }*/
 
-    function Validate()
+    /*function Validate()
     {
         this.element.addEventListener( "click", () =>
         {
@@ -2215,10 +1054,10 @@ DB.Forms = function()
                 dispatch.call( this, params );
             }
         }, false );
-    }
+    }*/
 
     // tbr
-    function Vector()
+    /*function Vector()
     {
         var vector = this;
 
@@ -2265,10 +1104,10 @@ DB.Forms = function()
                     input.value = value[ axis ];
             } );
         }
-    }
+    }*/
 
     // tbr
-    function Vertical()
+    /*function Vertical()
     {
         var handlers = {};
 
@@ -2350,5 +1189,5 @@ DB.Forms = function()
 
         this.refresh = ( params, callback ) => this.data.source.getter( params, ( response ) => callback( response, params ) );
         this.refresh( this.data.source.params, render );
-    }
+    }*/
 };

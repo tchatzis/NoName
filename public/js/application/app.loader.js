@@ -29,11 +29,13 @@
         { type: 'js', src: 'https://www.gstatic.com/firebasejs/8.2.7/firebase-auth.js' },
         { type: 'js', src: 'https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js' },
         { type: 'js', src: 'https://www.gstatic.com/firebasejs/8.2.7/firebase-firestore.js' },
+        { type: 'js', directory: 'resources', name: 'app.db' },
         /** application initialize */
         { type: 'js', directory: 'application', name: 'app.init' },
         { type: 'js', directory: 'application', name: 'app.load.textures' },
         { type: 'js', directory: 'application', name: 'app.load.fonts' },
         /** user interface / input */
+        { type: 'js', directory: 'ui', name: 'app.data.forms', module: true },
         { type: 'js', directory: 'ui', name: 'app.ui' },
         { type: 'js', directory: 'ui', name: 'app.ui.forms' },
         { type: 'js', directory: 'ui', name: 'app.gamepad.camera' },
@@ -106,8 +108,6 @@
         // classes
         { type: 'js', directory: 'resources', name: 'app.bender' },
         { type: 'js', directory: 'resources', name: 'app.csg' },
-        { type: 'js', directory: 'resources', name: 'app.db' },
-        { type: 'js', directory: 'ui', name: 'app.db.forms' }, // dependent on app.db
         { type: 'js', directory: 'resources', name: 'app.data.getters' },
         { type: 'js', directory: 'resources', name: 'app.data.setters' },
         { type: 'js', directory: 'resources', name: 'app.disruptors' },
@@ -164,6 +164,12 @@
         switch( d.type )
         {
             case "js":
+                tag = document.createElement( "script" );
+                tag.src = url;
+                tag.type = d.hasOwnProperty( "module" ) ? "module" : "text/javascript";
+            break;
+
+            case "module":
                 tag = document.createElement( "script" );
                 tag.src = url;
                 tag.type = d.hasOwnProperty( "module" ) ? "module" : "text/javascript";
