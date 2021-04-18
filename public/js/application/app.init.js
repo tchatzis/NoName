@@ -5,7 +5,7 @@ var App = function()
     //console.log( THREE.REVISION );
 
     this.title = "NoNameGame";
-    this.url = window.location.origin == "https://tchatzis.github.io" ? window.location.origin + "/" + this.title + "/" : window.location.origin + "/";
+    this.url = window.location.origin == "https://tchatzis.github.io" ? window.location.origin + "/" + this.title + "/public/" : window.location.origin + "/";
     this.ready = false;
     this.isReady = () => { return this.ready };
     this.debug = false;

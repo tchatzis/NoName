@@ -1,8 +1,11 @@
 import { Composite } from './modules/form.composite.js';
+import { Container } from './modules/form.container.js';
 
-DB.Forms = function()
+DB.Forms = function( args )
 {
     this.Composite = Composite;
+
+    Container.call( this, args );
 
     /*function Form()
     {

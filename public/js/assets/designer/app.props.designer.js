@@ -193,14 +193,14 @@ const Designer = function()
         } );
     }
 
-    function Params( args )
+    /*function Params( args )
     {
         this.key    = args.key || null;
         this.map    = Array.isArray( args.map ) ? args.map.join( "." ) : args.map ? args.map : null;
         this.output = args.output || "static";
         this.path   = Array.isArray( args.path ) ? args.path.join( "/" ) : args.path;
         this.value  = args.value || null;
-    }
+    }*/
 
     const Process =
     {
@@ -561,74 +561,64 @@ const Designer = function()
         },
         project:
         {
-            load: ( event ) =>
+            load: async ( field ) =>
             {
                 UI.cancel( app.ui.modal );
                 UI.reset( app.ui.widget );
 
-                var detail = event.detail;
-                var project = detail.params.value[ detail.params.key ];
+                var delim = "/";
+                var key = "name";
+                var cell = field.Row.cols.find( col => col.field[ key ] == key );
                 var collections = [ "groups", "points" ];
 
-                scope.current.set( "project", project );
-                scope.current.set( "name", scope.group.name );
-                scope.current.set( "data", detail.params.data );
-
-                // collection getters
-                var data = {};
-                    data.groups = async function()
-                    {
-                        var key = "name";
-                        var path = detail.params.path.split( "/" );
-                            path.push( "groups" );
-                        var response = await app.db.get( new Params( { key: key, output: "static", path: path.join( "/" ) } ) );
-
-                        Process.group.define( key, response.data );
-
-                        return response.data;
-                    }
-
-                    data.points = async function()
-                    {
-                        var key = "name";
-                        var path = detail.params.path.split( "/" );
-                            path.push( "points" );
-                        var response =  await app.db.get( new Params( { key: key, output: "static", path: path.join( "/" ) } ) );
-
-                        return response.data;
-                    }
-
-                // resolve all promises
-                async function get()
+                if ( cell )
                 {
-                    var promises = [];
+                    let project = cell.field.value;
 
-                    for ( let name of collections )
-                        promises.push( { [ name ]: await data[ name ]() } );
+                    scope.current.set( "project", project );
+                    scope.current.set( "name", scope.group.name );
+                    scope.current.set( "data", {} );
 
-                    return Promise.all( promises );
+                    // resolve all promises
+                    async function get()
+                    {
+                        var promises = [];
+
+                        for ( let collection of collections )
+                        {
+                            let source = new field.Source( cell.field.source );
+                                source.path = source.path + delim + project + delim + collection;
+                            let response = await app.db.get( source );
+
+                            scope.current.data[ collection ] = response.data;
+
+                            if ( collection == "groups" )
+                                Process.group.define( key, response.data );
+
+                            promises.push( { [ collection ]: response } );
+                        }
+
+                        return Promise.all( promises );
+                    }
+
+                    // proceed
+                    get().then( ( data ) =>
+                    {
+                        scope.current.set( "raw", data );
+
+                        Objects.plot.all();
+                        Forms.grid.settings();
+                        Forms.group.select();
+
+                        // TODO: move further down the pipeline
+                        Raycaster.initialize();
+                        Listeners.initialize();
+                    } );
                 }
-
-                // proceed
-                get().then( ( data ) =>
-                {
-                    for ( let name in data )
-                        if ( data.hasOwnProperty( name ) )
-                            Object.assign( scope.current.data, data[ name ] );
-
-                    Objects.plot.all();
-                    Forms.grid.settings();
-                    Forms.group.select();
-                } );
-
-
-                // TODO: move further down the pipeline
-                Raycaster.initialize();
-                Listeners.initialize();
 
                 // TODO: define tools
                 //app.ui.toolbar.prepend( { icon: parseInt( "1F50E", 16 ), title: "Inspect", action: () => {} } );
-                //app.ui.toolbar.prepend( { icon: 9776, title: "Layer Visibility", action: () => {} } );
+                //app.ui.toolbar.prepend( { icon: 9776, title: "Layer Visibility", action: () => {} } );*/
 
             },
             select: () =>
@@ -824,15 +814,16 @@ const Designer = function()
         {
             select: () =>
             {
-                var form = new DB.Forms();
-                var project = new form.Composite( { name: "Project", parent: app.ui.modal, config: { numbers: false, headings: true } } );
+                var form = new DB.Forms( { parent: app.ui.modal, type: "single" } );
+                var tab = form.add( { name: "Select Project" } );
+                var project = new form.Composite( { parent: tab, config: { numbers: false, headings: true } } );
                     project.init(
                     [
-                        new project.Col( { name: "name", type: "combo", value: "", source: { key: "name", path: "projects", output: "static" } } ),
-                        new project.Col( { name: null, type: "submit", value: "select" } )
+                        new project.Col( { name: "name", type: "combo", value: null, source: new project.Source( { key: "name", path: "projects", output: "static" } ) } ),
+                        new project.Col( { name: null, type: "submit", value: "select", handlers: [ new project.Handler( { event: "click", handler: Process.project.load  } ) ] } )
                     ] );
 
-                console.log( project );
+                //console.log( project );
                 
                 /*var test = new form.Composite( { name: "test", parent: document.body } );
                     test.init(
@@ -858,21 +849,6 @@ const Designer = function()
                     }, false );
 
                     test.element.addEventListener( "next", ( e ) => console.log( e.detail ) );*/
-
-                /*var path = [ "projects" ];
-                var form = new DB.Forms();
-                    form.init( { parent: app.ui.modal, title: "Project" } );
-                    form.add( { name: "name", label: "select", type: "datalist", value: "", parent: "", required: true,
-                        data: { output: "name", source: { getter: app.getters.db, params: new Params( { key: "name", output: "static", path: path } ) } },
-                        handlers: [ { event: "input", handler: function() 
-                        {
-                            var _path = [ ...path ];
-                                _path.push( this.value );
-                            submit.data.destination.params = new Params( { key: "name", output: "static", path: _path.join( "/" ) } );
-                        } } ] } );
-                var submit = form.add( { name: "submit", label: "", type: "submit", value: "select", parent: "",
-                        data: { output: false, destination: { setter: app.setters.db } },
-                        handlers: [ { event: "validated", handler: Process.project.load } ] } );*/
             }
         },
         group:
@@ -1343,15 +1319,6 @@ const Designer = function()
             },
             points: ( args ) =>
             {
-                /*args.points.forEach( ( point, i ) =>
-                {
-                    args.point = point;
-                    args.index = i;
-
-                    Objects.markers.remove( args );
-                    Objects.markers.add( args );
-                } );*/
-
                 Objects.lines.remove( args );
 
                 if ( args.points.length > 1 )

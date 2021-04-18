@@ -3,7 +3,7 @@ const DB = function()
     var scope = "db";
     var app = this;
         app[ scope ] = {};
-    var firebaseConfig =
+    var config =
     {
         apiKey: "AIzaSyDWW-G627Z5gnPO4e04iZVreLoq1knqKa8",
         authDomain: "titoc-nonamegame.firebaseapp.com",
@@ -14,12 +14,12 @@ const DB = function()
         appId: "1:582446940541:web:b0980ee31dbd80dfb10c14"
     };
 
-    firebase.initializeApp( firebaseConfig );
+    firebase.initializeApp( config );
 
     var db = firebase.firestore();
     var fv = firebase.firestore.FieldValue;
 
-    function getRef( params )
+    function reference( params )
     {
         var delim = "/";
         var array = [ ...params.path.split( delim ) ];
@@ -34,7 +34,7 @@ const DB = function()
         return db[ type ]( path );
     }
 
-    function meta( data )
+    /*function meta( data )
     {
         var timestamp = fv.serverTimestamp();
 
@@ -55,10 +55,12 @@ const DB = function()
             valid.push( valid !== undefined );
 
         return valid.every( item => item );
-    }
+    }*/
 
-    function Output( ref, params, callback )
+    function Output( params, callback )
     {
+        var ref = reference( params );
+
         function data( response )
         {
             var data = [];
@@ -69,6 +71,8 @@ const DB = function()
                     data = response.docs.map( doc =>
                     {
                         var d = doc.data()[ params.map ];
+
+                        if ( params.key )
                             d[ params.key ] = doc.id;
 
                         return d;
@@ -83,7 +87,9 @@ const DB = function()
                     data = response.docs.map( doc =>
                     {
                         var d = doc.data();
-                            d[ params.key ] = doc.id;
+
+                        if ( params.key )
+                           d[ params.key ] = doc.id;
 
                         return d;
 
@@ -94,14 +100,12 @@ const DB = function()
                     data = response.data() || [];
             }
 
-            return data;
+            return { data: data };
         }
 
         this.realtime = () => ref.onSnapshot( ( response ) =>
         {
-            var output = { data: data( response ) };
-
-            //console.log( output );
+            var output = data( response );
 
             if ( callback )
                 callback( output );
@@ -111,10 +115,10 @@ const DB = function()
 
         this.static = () => ref.get().then( ( response ) =>
         {
-            var output = { data: data( response ) };
+            var output = data( response );
 
             if ( callback )
-                callback( output )
+                callback( output );
 
             return output;
         } ).catch( app[ scope ].catch );
@@ -125,7 +129,7 @@ const DB = function()
     {
         meta( data );
 
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.add( data ).then( callback ).catch( app[ scope ].catch );
     };*/
 
@@ -135,13 +139,13 @@ const DB = function()
 
     /*app[ scope ].delete = ( path, callback ) =>
     {
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.delete().then( callback ).catch( app[ scope ].catch );
     };*/
 
     app[ scope ].deleteField = ( params, callback ) =>
     {
-        var ref = getRef( params );
+        var ref = reference( params );
             ref.update( { [ params.map ]: fv.delete() } );
         var output = new Output( ref, params, callback );
 
@@ -150,7 +154,7 @@ const DB = function()
 
     /*app[ scope ].get = ( params, callback ) =>
     {
-        var ref = getRef( params );
+        var ref = reference( params );
             ref.get()
                 .then( ( response ) =>
                 {
@@ -172,23 +176,20 @@ const DB = function()
 
     app[ scope ].get = ( params, callback ) =>
     {
-        //console.log( params );
-
-        var ref = getRef( params );
-        var output = new Output( ref, params, callback );
+        var output = new Output( params, callback );
 
         return output[ params.output ]();
     };
     
     /*app[ scope ].max = ( key, path, limit, callback ) =>
     {
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.orderBy( key, "desc" ).limit( limit ).get().then( ( snapshot ) => callback( snapshot.docs ) ).catch( app[ scope ].catch );
     };*/
 
     /*app[ scope ].min = ( key, path, limit, callback ) =>
     {
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.orderBy( key, "asc" ).limit( limit ).get().then( ( snapshot ) => callback( snapshot.docs ) ).catch( app[ scope ].catch );
     };*/
 
@@ -198,7 +199,7 @@ const DB = function()
         {
             if ( hasValue( params.object ) )
             {
-                var ref = getRef( params.path );
+                var ref = reference( params.path );
                     ref.onSnapshot( ( snapshot ) =>
                     {
                         var data = snapshot.get( params.object );
@@ -222,7 +223,7 @@ const DB = function()
         },
         merge: ( params, data, callback ) =>
         {
-            var ref = getRef( params.path );
+            var ref = reference( params.path );
                 ref.set( data, { merge: true } ).then( () => callback( { data: data, object: params.object, path: ref.path } ) ).catch( app[ scope ].catch );
         },
         replace: ( params, data, callback ) =>
@@ -234,7 +235,7 @@ const DB = function()
     // save a value without a snapshot call
     /*app[ scope ].save = ( params ) =>
     {
-        var ref = getRef( params );
+        var ref = reference( params );
 
         if ( params.map )
             ref.update( { [ params.map ] : params.value } ).catch( app[ scope ].catch );
@@ -244,7 +245,7 @@ const DB = function()
     
     app[ scope ].addDoc = ( params, callback ) =>
     {
-        var ref = getRef( params );
+        var ref = reference( params );
             ref.doc( params.key ).set( params.value ).catch( app[ scope ].catch );
 
         var output = new Output( ref, params, callback );
@@ -255,20 +256,20 @@ const DB = function()
     // does not overwrite entire doc
     app[ scope ].set = ( params, callback ) =>
     {
-        var ref = getRef( params );
+        //var ref = reference( params );
 
-        if ( params.map )
+        /*if ( params.map )
             ref.update( { [ params.map ] : params.value } ).catch( app[ scope ].catch );
         else
             ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
 
-        var output = new Output( ref, params, callback );
-            output[ params.output ]();
+        var output = new Output( params, callback );
+            output[ params.output ]();*/
     };
 
     /*app[ scope ].test = ( params, data, callback ) =>
     {
-        var ref = getRef( params.path );
+        var ref = reference( params.path );
 
         console.log( { data: data, key: params.key, object: params.object, path: ref.path } );
     };*/
@@ -276,7 +277,7 @@ const DB = function()
     // statement: [ "name", "operator == ", "value" ]
     /*app[ scope ].query = ( statement, path, callback ) =>
     {
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.where( ...statement ).get().then( callback ).catch( app[ scope ].catch );
     };*/
 
@@ -291,26 +292,26 @@ const DB = function()
     // returns the collection
     /*app[ scope ].ordered = ( path, callback ) =>
     {
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.orderBy( "meta.index" ).onSnapshot( callback );
     };*/
 
     /*app[ scope ].read = ( path, callback ) =>
     {
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.get().then( callback ).catch( app[ scope ].catch );
     };*/
 
     /*app[ scope ].realtime = ( path, callback ) =>
     {
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.onSnapshot( callback );
     };*/
 
     // removes a key
     /*app[ scope ].remove = ( key, path, callback ) =>
     {
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.update( { [ key ]: fv.delete() } ).then( () => callback( { removed: key, path: path } ) ).catch( app[ scope ].catch );
     };*/
 
@@ -319,7 +320,7 @@ const DB = function()
     {
         meta( data );
 
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.doc( data[ key ] ).set( data ).catch( app[ scope ].catch );
     };*/
 
@@ -327,7 +328,7 @@ const DB = function()
     {
         meta( data );
 
-        var ref = getRef( path );
+        var ref = reference( path );
             ref.update( data ).then( () => callback( data ) ).catch( app[ scope ].catch );
     };*/
 };

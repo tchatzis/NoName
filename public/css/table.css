@@ -3,9 +3,6 @@
     display: table;
     border-spacing: 2px;
     pointer-events: auto;
-    position: absolute;
-    top: 10vh;
-    z-index: 100;
 }
 
 .table-row

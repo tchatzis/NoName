@@ -277,6 +277,34 @@ export const Components =
 
         Components.options.call( this, this.element );
     },
+    
+    submit: function()
+    {
+        var field = this;
+
+        this.element = document.createElement( "input" );
+        this.element.setAttribute( "type", this.type );
+        this.element.setAttribute( "value", this.value );
+        this.element.setAttribute( "autocomplete", "off" );
+        this.element.addEventListener( "click", function()
+        {
+            var valid = field.Row.validate();
+
+            if ( valid )
+            {
+                this.setAttribute( "disabled", valid );
+
+                field.set.handlers();
+                field.handlers.forEach( type =>
+                {
+                    if ( type.event == "click" )
+                        type.handler( field );
+                } );
+            }
+        }, false );
+
+        this.parent.appendChild( this.element );
+    },
 
     toggle: function()
     {

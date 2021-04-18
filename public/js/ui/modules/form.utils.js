@@ -48,12 +48,12 @@ const Utils =
 
     invoke: async function( args )
     {
-        var options = async function( params )
+        var options = async function( source )
         {
             var options = [];
 
-            var response = await app.getters.db( params );
-                response.data.forEach( item => options.push( new this.Option( item[ params.key ] ) ) );
+            var response = await app.getters.db( source );
+                response.data.forEach( item => options.push( new this.Option( item[ source.key ] ) ) );
 
             return options;
         }.bind( this );
@@ -154,4 +154,4 @@ const Utils =
     }
 };
 
-export { Utils };
+export { Field, Utils };

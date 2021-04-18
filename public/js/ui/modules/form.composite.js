@@ -1,4 +1,4 @@
-import { Utils } from './form.utils.js';
+import { Field, Utils } from './form.utils.js';
 
 export function Composite( args )
 {
@@ -31,11 +31,16 @@ export function Composite( args )
 
             args.col = index;
             args.data = composite.data;
-            args.id = `${ composite.name }.${ this.row.index }.${ args.name }`;
+            args.id = `${ composite.name }.${ this.row.index }.${ args.name || args.value }`;
             args.parent = element;
             args.row = this.row.index;
 
             this.field = await Utils.invoke.call( composite, args );
+            this.field.Row =
+            {
+                cols: this.row.cols,
+                validate: this.row.validate
+            };
 
             if ( args.name )
                 composite.data[ this.row.index ][ args.name ] = this.field.value;
@@ -180,7 +185,7 @@ export function Composite( args )
 
                 let event = new CustomEvent( "next", { detail: { row: this.index, values: values } } );
 
-                composite.events.dispatchEvent( event );
+                composite.element.dispatchEvent( event );
             }
         };
 
@@ -294,14 +299,10 @@ export function Composite( args )
 
         var event = new Event( "loaded" );
 
-        this.events.dispatchEvent( event );
+        this.element.dispatchEvent( event );
     };
 
     this.label = ( col, value ) => labels[ col ].innerText = value;
-    
-    this.Option = function( text, value )
-    {
-        this.text = text;
-        this.value = typeof value == "undefined" ? text : value;
-    };
+
+    Field.call( this );
 }
