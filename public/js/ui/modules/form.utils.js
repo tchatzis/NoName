@@ -52,7 +52,7 @@ const Utils =
         {
             var options = [];
 
-            var response = await app.getters.db( source );
+            var response = await app.getters[ source.type ]( source );
                 response.data.forEach( item => options.push( new this.Option( item[ source.key ] ) ) );
 
             return options;

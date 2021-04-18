@@ -27,20 +27,17 @@ function Field( args )
     // display
     switch( this.type )
     {
-        /*case "array":
-            Arrays.call( this );
-        break;*/
-
-        /*case "checkbox":
-        case "color":
+        /*
+        checkbox
         datetime-local
         file
-            image
-            month
-            radio
-            search
-            url
-            week*/
+        image
+        month
+        radio
+        search
+        url
+        week
+        */
 
         case "button":
         case "date":
@@ -64,41 +61,12 @@ function Field( args )
         case "select":
         case "submit":
         case "toggle":
+        case "tree":
         case "vector":
             Components[ this.type ].call( this );
         break;
 
-        /*case "controls":
-            Controls.call( this );
-        break;*/
-
-        /*case "datalist":
-            DataList.call( this );
-        break;*/
-
-        /*case "list":
-            List.call( this );
-        break;*/
-
-        /*case "select":
-            Select.call( this );
-        break;*/
-
-        /*case "toggle":
-            Toggle.call( this );
-        break;*/
-
-        /*case "tree":
-            Tree.call( this );
-        break;*/
-
-        /*case "vector":
-            Vector.call( this );
-        break;*/
-
-        /*case "vertical":
-            Vertical.call( this );
-        break;*/
+        console.warn( this.type );
     }
 
     // events
@@ -137,11 +105,28 @@ function Field( args )
 
     this.validate = () => Utils.validate( this );
 
+    // constructors
     this.Destination = function( args )
     {
         this.key = args.key;
-        this.path = args.path;
-        this.output = args.output || "static";
+
+        if ( args.path )
+        {
+            this.type = "db";
+            this.path = args.path;
+            this.output = args.output || "static";
+
+            if ( args.map )
+                this.map = args.map;
+
+            return;
+        }
+
+        if ( args.data )
+        {
+            this.type = "object";
+            this.data = args.data;
+        }
     };
 
     this.Handler = function( args )
@@ -159,11 +144,24 @@ function Field( args )
     this.Source = function( args )
     {
         this.key = args.key;
-        this.path = args.path;
-        this.output = args.output || "static";
 
-        if ( args.map )
-            this.map = args.map;
+        if ( args.path )
+        {
+            this.type = "db";
+            this.path = args.path;
+            this.output = args.output || "static";
+
+            if ( args.map )
+                this.map = args.map;
+
+            return;
+        }
+
+        if ( args.data )
+        {
+            this.type = "object";
+            this.data = args.data;
+        }
     };
 }
 

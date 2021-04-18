@@ -344,6 +344,14 @@ export const Components =
         this.update( this.value );
     },
 
+    tree: function()
+    {
+        var field = this;
+
+        this.element = document.createElement( "div" );
+        this.element.setAttribute( "id", field.id );
+    },
+
     vector: function()
     {
         var field = this;

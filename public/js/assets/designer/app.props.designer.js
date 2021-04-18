@@ -604,7 +604,7 @@ const Designer = function()
                     // proceed
                     get().then( ( data ) =>
                     {
-                        scope.current.set( "raw", data );
+                        scope.current.set( "response", data );
 
                         Objects.plot.all();
                         Forms.grid.settings();
@@ -814,7 +814,7 @@ const Designer = function()
         {
             select: () =>
             {
-                var form = new DB.Forms( { parent: app.ui.modal, type: "single" } );
+                var form = new DB.Forms( { parent: app.ui.modal, type: "horizontal" } );
                 var tab = form.add( { name: "Select Project" } );
                 var project = new form.Composite( { parent: tab, config: { numbers: false, headings: true } } );
                     project.init(
@@ -823,8 +823,6 @@ const Designer = function()
                         new project.Col( { name: null, type: "submit", value: "select", handlers: [ new project.Handler( { event: "click", handler: Process.project.load  } ) ] } )
                     ] );
 
-                //console.log( project );
-                
                 /*var test = new form.Composite( { name: "test", parent: document.body } );
                     test.init(
                     [
@@ -855,18 +853,13 @@ const Designer = function()
         {
             select: () =>
             {
-                /*var path = [ "projects", scope.current.project, "groups" ];
-                var select = new DB.Forms();
-                    select.init( { parent: app.ui.widget, title: "Select Group" } );
-                var tree = select.add( { name: "name", label: "name", type: "tree", value: "", parent: "",
-                        data: { output: true, source: { getter: app.getters.db, params: new Params( { key: "name", output: "realtime", path: path } ) } },
-                        handlers: [ { event: "add", handler: Process.group.add }, { event: "selection", handler: Process.group.select }, { event: "expansion", handler: Process.group.expansion } ]
-                    } );
-
-                Process.hooks.group =
-                {
-                    name: tree
-                };*/
+                var form = new DB.Forms( { parent: app.ui.widget, type: "horizontal" } );
+                var tab = form.add( { name: "Select Group" } );
+                var group = new form.Composite( { parent: tab, config: { numbers: false, headings: true } } );
+                    group.init(
+                    [
+                        new group.Col( { name: "name", type: "tree", value: null, source: new group.Source( { key: "name", data: scope.current.data.groups } ) } )
+                    ] );
             }
         },
         points:

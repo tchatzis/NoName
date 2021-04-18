@@ -269,11 +269,13 @@ export function Composite( args )
         if ( args.destination )
             this.destination = args.destination;
 
-        if ( args.source )
-            this.source = args.source;
-
         if ( args.options )
             this.options = args.options;
+        else
+            if ( args.source )
+                this.source = args.source;
+
+        console.warn( this );
     };
 
     this.get =
