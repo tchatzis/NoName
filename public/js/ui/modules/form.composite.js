@@ -31,7 +31,8 @@ export function Composite( args )
 
             args.col = index;
             args.data = composite.data;
-            args.id = `${ composite.name }.${ this.row.index }.${ args.name || args.value }`;
+            // TODO: fix id
+            args.id = `${ this.row.index }.${ args.name || args.value }`;
             args.parent = element;
             args.row = this.row.index;
 
@@ -70,8 +71,8 @@ export function Composite( args )
         {
             this.index = this.table.rows.length;
             this.element = Utils.create( "table-row" );
-            if ( !this.index )
-                this.element.classList.add( "table-add" );
+            //if ( !this.index )
+            //    this.element.classList.add( "table-add" );
             this.cols = [];
             this.col = new Col( this );
 
@@ -275,7 +276,7 @@ export function Composite( args )
             if ( args.source )
                 this.source = args.source;
 
-        console.warn( this );
+        //console.warn( this );
     };
 
     this.get =

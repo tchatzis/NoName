@@ -289,7 +289,7 @@ input:disabled
 {
     cursor: pointer;
     text-align: center;
-    line-height: 10px;
+    line-height: 9px;
     font-size: 1em;
     color: #666;
     border: 1px solid #333;
@@ -297,8 +297,8 @@ input:disabled
     padding: 2px;
     margin-left: 4px;
     margin-right: 4px;
-    height: 12px;
-    width: 12px;
+    height: 15px;
+    width: 15px;
 }
 
 .formswitch:hover
@@ -340,19 +340,4 @@ input:disabled
     font-size: 1.5em;
     text-transform: capitalize;
     cursor: zoom-out;
-}
-
-.formtree
-{
-    overflow-y: auto;
-    height: 0;
-    min-width: 125px;
-    transition: height 0.5s ease-out;
-    pointer-events: auto;
-}
-
-.formtreeexpand
-{
-    height: auto;
-    transition: height 0.5s ease-out;
 }

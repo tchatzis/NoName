@@ -245,20 +245,23 @@ const Designer = function()
 
                 app.setters.db( params, Forms.points.segments );
             },
-            breadcrumbs: ( map, detail, callback ) =>
+            breadcrumbs: ( map, args, callback ) =>
             {
+                var delim = "/";
+                var path = "projects" + delim + scope.current.project + delim + "groups";
+
                 // traverse breadcrumbs
-                detail.breadcrumbs.forEach( name =>
+                args.breadcrumbs.forEach( name =>
                 {
-                    var path = detail.params.path.split( "/" );
-                        path.push( name );
+                    var params =
+                    {
+                        map: map,
+                        output: "static",
+                        path: path + delim + name,
+                        value: name !== args.value || !args.data[ map ]
+                    };
 
-                    var params = { ...detail.params };
-                        params.map = map;
-                        params.path = path.join( "/" );
-                        params.value = name !== detail.params.value || !detail.params[ map ];
-
-                    app.setters.db( params, () => callback( { name: name, value: params.value, data: detail.params.data } ) );
+                    app.setters.db( params, ( response ) => callback( { name: name, value: response.data, data: args.data } ) );
                 } );
             },
             define: ( key, data ) =>
@@ -313,53 +316,47 @@ const Designer = function()
 
                 traverse( root );
             },
-            expansion: ( event ) =>
+            opacity: ( name, obj ) =>
             {
-                var group = event.detail.field.getAttribute( "data-value" );
-                var params = { ...event.detail.params };
-                    params.map = "expand";
-                    params.path = params.path + `/${ group }`;
-                    params.value = !params.value;
-
-                app.setters.db( params );
-            },
-            opacity: ( obj ) =>
-            {
-                obj.children.forEach( ( child ) => Process.group.opacity( child ) );
+                obj.children.forEach( ( child ) => Process.group.opacity( name, child ) );
 
                 if ( obj.material && !obj.parent.userData.ui )
-                    obj.material.opacity = obj.parent.name == scope.current.name ? 1 : scope.settings.opacity;
+                    obj.material.opacity = obj.parent.name == name ? 1 : scope.settings.opacity;
             },
-            select: ( event ) =>
+            select: ( args ) =>
             {
-                var name = event.detail.field.value;
-
-                scope.current.set( "name", name );
-                scope.current.set( "group", scope.group.getObjectByName( name ) );
-
-                if ( Process.hooks.points && Process.hooks.points.popup )
-                    Process.hooks.points.popup.destroy();
-
-                Process.group.visibility( event );
-
+                Process.group.visibility( args );
                 Forms.points.segments();
             },
-            visibility: ( event ) =>
+            toggle: ( args ) =>
+            {
+                var map = "expand";
+
+                Process.group.breadcrumbs( map, args, callback );
+
+                function callback( args )
+                {
+                    args.data[ map ] = args.value;
+                }
+            },
+            visibility: ( args ) =>
             {
                 var map = "visible";
+                var label = args.element;
 
-                Process.group.breadcrumbs( map, event.detail, visibility );
+                Process.group.breadcrumbs( map, args, callback );
 
-                function visibility( args )
+                function callback( args )
                 {
-                    scope.groups.forEach( group =>
-                    {
-                        if ( group.name == args.name )
-                        {
-                            group[ map ] = args.value;
-                            Process.group.opacity( group );
-                        }
-                    } );
+                    label.classList.remove( !args.value );
+                    label.classList.add( args.value );
+
+                    args.data[ map ] = args.value;
+
+                    var group = scope.group.getObjectByName( args.name );
+                        group[ map ] = args.value;
+
+                    Process.group.opacity( args.name, group );
                 }
             }
         },
@@ -820,7 +817,7 @@ const Designer = function()
                     project.init(
                     [
                         new project.Col( { name: "name", type: "combo", value: null, source: new project.Source( { key: "name", path: "projects", output: "static" } ) } ),
-                        new project.Col( { name: null, type: "submit", value: "select", handlers: [ new project.Handler( { event: "click", handler: Process.project.load  } ) ] } )
+                        new project.Col( { name: null, type: "submit", value: "select", handlers: [ new project.Handler( { event: "click", handler: Process.project.load } ) ] } )
                     ] );
 
                 /*var test = new form.Composite( { name: "test", parent: document.body } );
@@ -858,7 +855,14 @@ const Designer = function()
                 var group = new form.Composite( { parent: tab, config: { numbers: false, headings: true } } );
                     group.init(
                     [
-                        new group.Col( { name: "name", type: "tree", value: null, source: new group.Source( { key: "name", data: scope.current.data.groups } ) } )
+                        new group.Col(
+                        {
+                            name: "name",
+                            type: "tree",
+                            value: null,
+                            handlers: [ new group.Handler( { event: "click", handler: Process.group.select } ), new group.Handler( { event: "toggle", handler: Process.group.toggle } ) ],
+                            source: new group.Source( { key: "name", data: scope.current.data.groups } )
+                        } )
                     ] );
             }
         },
@@ -889,6 +893,7 @@ const Designer = function()
             },
             segments: () =>
             {
+                console.warn( "show points data" );
                 /*var data = scope.current.data.points;
                 var form = new DB.Forms();
                     form.init( { name: "segments", parent: app.ui.widget, title: "Segments" } );

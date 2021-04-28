@@ -2,18 +2,15 @@ import { Utils } from './form.utils.js';
 
 export function Container( args )
 {
-    this.parent = args.parent;
+    var tabs = Utils.create( "form-tabs" );
+    var contents = Utils.create( "form-contents" );
 
     this.element = Utils.create( "form" );
-    this.parent.appendChild( this.element );
-
-    //var fill = Utils.create( "form-tab-fill" );
-    var tabs = Utils.create( "form-tabs" );
-    //    tabs.appendChild( fill );
     this.element.appendChild( tabs );
-
-    var contents = Utils.create( "form-contents" );
     this.element.appendChild( contents );
+
+    this.parent = args.parent;
+    this.parent.appendChild( this.element );
 
     this.tabs =
     {
@@ -25,7 +22,9 @@ export function Container( args )
     {
         var tab = Utils.create( "form-tab" );
             tab.innerText = args.name;
+            tab.setAttribute( "data-tab", args.name );
         var content = Utils.create( "form-content" );
+            content.setAttribute( "data-tab", args.name );
 
         this.tabs.names.push( args.name );
         this.tabs.contents[ args.name ] = content;

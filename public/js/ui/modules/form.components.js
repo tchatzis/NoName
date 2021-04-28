@@ -348,8 +348,260 @@ export const Components =
     {
         var field = this;
 
-        this.element = document.createElement( "div" );
-        this.element.setAttribute( "id", field.id );
+        this.required = true;
+
+        // element
+        this.element = document.createElement( "input" );
+        /*this.element.setAttribute( "id", this.id );
+        this.element.setAttribute( "name", this.name );
+        this.element.setAttribute( "type", "text" );
+        this.element.setAttribute( "value", this.value );
+        this.element.setAttribute( "readonly", true );
+        this.element.style.cursor = "pointer";
+        this.element.addEventListener( "click", function()
+        {
+            items.classList.toggle( "formtreeexpand" );
+        } );*/
+
+        // handlers
+        var handlers = {};
+
+        this.handlers.forEach( type =>
+        {
+            handlers[ type.event ] = type.handler;
+        } );
+
+        // items
+        var items = this.parent.querySelector( `[ data-name = "${ this.name }" ]` ) || document.createElement( "div" );
+            items.innerHTML = null;
+            items.setAttribute( "id", this.id );
+            items.setAttribute( "data-name", this.name );
+
+        this.parent.appendChild( items );
+
+        // functions
+        function click( args )
+        {
+            var value = args.value;
+
+            field.update( value );
+
+            state( args.element, value );
+
+            if ( handlers.click )
+            {
+                args.field = field;
+                handlers.click( args );
+            }
+        }
+
+        function show( item )
+        {
+            item.classList.toggle( "hide" );
+        }
+
+        function state( label, value )
+        {
+            var spans = items.querySelectorAll( "span" )
+                spans.forEach( span => span.classList.remove( "formselected" ) );
+
+            if ( field.value == value )
+                label.classList.add( "formselected" );
+        }
+
+        function toggle( args )
+        {
+            var children = args.element.querySelectorAll( "ul" );
+                children.forEach( child =>
+                {
+                    if ( child.getAttribute( "data-parent" ) == args.value )
+                    {
+                        child.classList.toggle( "hide" );
+                        this.innerText = child.classList.contains( "hide" ) ? "+" : "-";
+                    }
+                } );
+
+            if ( handlers.toggle )
+            {
+                args.field = field;
+                handlers.toggle( args );
+            }
+        }
+
+        var render = () =>
+        {
+            var i = 0;
+            var root = this.source.data.find( obj => !obj.parent );
+
+            // clear the element
+            items.innerHTML = null;
+
+            // start the iteration
+            if ( root )
+            {
+                let args =
+                {
+                    data: root,
+                    parent: items,
+                    breadcrumbs: [],
+                    expand: root.expand
+                };
+
+                traverse( args );
+            }
+
+            function traverse( args )
+            {
+                var data = args.data;
+                var value = data[ field.source.key ];
+                var parent = args.parent;
+                var breadcrumbs = [ ...args.breadcrumbs, value ];
+                var level = args.level || 0;
+                var index = args.index || 0;
+                var _i = i;
+
+                // elements
+                var icon = document.createElement( "div" );
+                    icon.innerText = String.fromCodePoint( 8627 );
+                    icon.classList.add( "formswitch" );
+                    icon.setAttribute( "data-value", value );
+                var label = document.createElement( "span" );
+                    label.innerText = value;
+                    label.classList.add( data.visible );
+                    label.addEventListener( "click", ( e ) =>
+                    {
+                        e.stopPropagation();
+                        click( { breadcrumbs: breadcrumbs, data: data, element: e.target, value: value } );
+                    }, false );
+                var item = document.createElement( "li" );
+                    item.classList.add( "formitem" );
+                    item.setAttribute( "data-index", _i );
+                    item.setAttribute( "data-child", index );
+                    item.setAttribute( "data-value", value );
+                    item.appendChild( icon );
+                    item.appendChild( label );
+                var ul = items.querySelector( `[ data-parent = "${ data.parent }" ]` ) || document.createElement( "ul" );
+                    ul.setAttribute( "data-parent", data.parent );
+                    ul.appendChild( item );
+
+                // toggle
+                if ( data.hasOwnProperty( "children" ) )
+                {
+                    let args =
+                    {
+                        breadcrumbs: breadcrumbs,
+                        data: data,
+                        element: ul,
+                        value: value
+                    };
+
+                    icon.addEventListener( "click", () => toggle.call( icon, args ), false );
+                }
+                else
+                {
+                    icon.style.pointerEvents = "none";
+                    icon.style.border = "1px solid transparent";
+                }
+
+                console.log( "handlers.add" );
+
+                // add field
+                if ( handlers.add )
+                {
+                    // new child ( toggled )
+                    let add = document.createElement( "li" );
+                        add.classList.add( "formadd" );
+                        add.classList.add( "hide" );
+                    let icon = document.createElement( "div" );
+                        icon.innerText = String.fromCodePoint( 8627 );
+                        icon.classList.add( "formswitch" );
+                        icon.style.pointerEvents = "none";
+                        icon.style.border = "1px solid transparent";
+                    let input = document.createElement( "input" );
+                        input.setAttribute( "size", 10 );
+                        input.setAttribute( "name", value );
+                        input.setAttribute( "type", "text" );
+                        input.setAttribute( "placeholder", `add child to ${ value }` );
+                    let action = document.createElement( "div" );
+                        action.innerText = "+";
+                        action.classList.add( "formbutton" );
+                        action.setAttribute( "title", `add child to ${ value }` );
+                        action.addEventListener( "click", () =>
+                        {
+                            //params.data = response.data;
+                            //params.value = value;
+
+                            //tree.value = input.value;
+                            //tree.element.value = input.value;
+                            field.update( input.value );
+
+                            // TODO: add
+                            //handlers.add( { field: tree, breadcrumbs: breadcrumbs, params: params } );
+                        }, false  );
+
+                    add.appendChild( icon );
+                    add.appendChild( input );
+                    add.appendChild( action );
+                    ul.appendChild( add );
+
+                    // add child button ( showing )
+                    let button = document.createElement( "div" );
+                        button.innerText = String.fromCodePoint( 8627 );
+                        button.classList.add( "formbutton" );
+                        button.setAttribute( "title", `add child to ${ value }` );
+                        button.addEventListener( "click", () => show( add, ul, value ), false );
+
+                    item.appendChild( button );
+                }
+
+                if ( !data.expand )
+                    ul.classList.add( "hide" );
+
+                if ( args.expand || !ul.getAttribute( "data-parent" ) )
+                    ul.classList.remove( "hide" );
+
+                state( label, value );
+
+                parent.appendChild( ul );
+
+                level++;
+                i++;
+
+                // reiterate
+                if ( data.hasOwnProperty( "children" ) )
+                {
+                    icon.innerText = data.expand ? "-" : "+";
+
+                    data.children.forEach( ( child, index ) =>
+                    {
+                        var args =
+                        {
+                            data: child,
+                            parent: ul,
+                            breadcrumbs: breadcrumbs,
+                            expand: data.expand,
+                            level: level,
+                            index: index
+                        };
+
+                        traverse( args );
+                    } );
+                }
+            }
+        };
+
+        //this.refresh = ( params, callback ) => this.data.source.getter( params, ( response ) => callback( response, params ) );
+        //this.refresh( this.data.source.params, render );
+        //console.log( this );
+        render();
+
+        this.state = ( value ) =>
+        {
+            var item = items.querySelector( `[ data-value = "${ value }" ]` );
+            var label = item.querySelector( "span" );
+
+            state( label, value );
+        };
     },
 
     vector: function()

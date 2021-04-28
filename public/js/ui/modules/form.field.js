@@ -89,7 +89,6 @@ function Field( args )
         case "cycle":
         case "select":
         case "toggle":
-        case "tree":
         case "vector":
         break;
 

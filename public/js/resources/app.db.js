@@ -76,10 +76,10 @@ const DB = function()
                             d[ params.key ] = doc.id;
 
                         return d;
-                    } ) || [];
+                    } );
 
                 if ( response.data )
-                    data = response.data()[ params.map ] || [];
+                    data = response.data()[ params.map ];
             }
             else
             {
@@ -92,12 +92,11 @@ const DB = function()
                            d[ params.key ] = doc.id;
 
                         return d;
-
-                    } ) || [];
+                    } );
 
 
                 if ( response.data )
-                    data = response.data() || [];
+                    data = response.data();
             }
 
             return { data: data };
@@ -256,15 +255,16 @@ const DB = function()
     // does not overwrite entire doc
     app[ scope ].set = ( params, callback ) =>
     {
-        //var ref = reference( params );
+        var ref = reference( params );
 
-        /*if ( params.map )
+        if ( params.map )
             ref.update( { [ params.map ] : params.value } ).catch( app[ scope ].catch );
         else
             ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
 
         var output = new Output( params, callback );
-            output[ params.output ]();*/
+
+        return output[ params.output ]();
     };
 
     /*app[ scope ].test = ( params, data, callback ) =>

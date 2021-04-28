@@ -70,22 +70,15 @@ const Utils =
             break;
 
             case "combo":
-                args.value = args.value || "";
-                args.options = args.options || await options( args.source );
-            break;
-
             case "cycle":
+            case "select":
+            case "tree":
                 args.value = args.value || "";
                 args.options = args.options || await options( args.source );
             break;
 
             case "object":
                 args.value = args.value || { a: "amanda", b: "bob", c: "cathy", d: "dave" };
-            break;
-
-            case "select":
-                args.value = args.value || "";
-                args.options = args.options || await options( args.source );
             break;
 
             case "toggle":
