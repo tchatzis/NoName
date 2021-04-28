@@ -5,6 +5,7 @@ export function Composite( args )
     Object.assign( this, args );
 
     var composite = this;
+        composite.name = composite.parent.getAttribute( "data-name" );
     var labels = {};
 
     // add row and columns
@@ -28,11 +29,12 @@ export function Composite( args )
             var element = Utils.create( "table-cell" );
                 element.setAttribute( "data-col", index );
                 element.setAttribute( "data-row", this.row.index );
+            if ( composite.config.borders == true )
+                element.classList.add( "table-border" );
 
             args.col = index;
             args.data = composite.data;
-            // TODO: fix id
-            args.id = `${ this.row.index }.${ args.name || args.value }`;
+            args.id = `${ composite.name }.${ this.row.index }.${ args.name || args.type }`;
             args.parent = element;
             args.row = this.row.index;
 
@@ -71,8 +73,10 @@ export function Composite( args )
         {
             this.index = this.table.rows.length;
             this.element = Utils.create( "table-row" );
-            //if ( !this.index )
-            //    this.element.classList.add( "table-add" );
+            if ( !this.index && composite.config.add == true  )
+                this.element.classList.add( "table-add" );
+            if ( this.index && composite.config.hover == true  )
+                this.element.classList.add( "table-hover" );
             this.cols = [];
             this.col = new Col( this );
 
@@ -169,7 +173,8 @@ export function Composite( args )
 
                 if ( valid )
                 {
-                    columns.push( new test.Col( copy ) );
+                    //console.log( this, composite );
+                    columns.push( new composite.Col( copy ) );
 
                     // reset the field to default value
                     field.update( Utils.copy( this.defaults[ col ] ) );
@@ -235,13 +240,19 @@ export function Composite( args )
         composite.parent.appendChild( this.element );
     };
     
-    // add / delete
+    // add / delete row with click
     this.action = ( field ) =>
     {
         if ( !field.row )
             this.table.row.next();
         else
             this.table.row.delete( field );
+    };
+
+    // add row with data
+    this.append = ( data ) =>
+    {
+        console.log( composite, data );
     };
 
     // column definition object
@@ -277,6 +288,30 @@ export function Composite( args )
                 this.source = args.source;
 
         //console.warn( this );
+    };
+
+    this.from =
+    {
+        object:
+        {
+            to:
+            {
+                options: ( args ) =>
+                {
+                    var source = args.data;
+                    var options = [];
+                    var keys = Object.keys( source );
+                        keys.splice( keys.indexOf( args.key ), 1 );
+                        keys.sort();
+                        keys.forEach( name =>
+                        {
+                            options.push( new this.Option( name, source[ name ] ) );
+                        } );
+
+                    return options;
+                }
+            }
+        }
     };
 
     this.get =

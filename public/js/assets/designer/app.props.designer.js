@@ -226,24 +226,48 @@ const Designer = function()
         },
         group:
         {
-            add: ( detail ) =>
+            add: ( args ) =>
             {
+                var name = args.value;
                 var delim = "/";
-                var name = detail.field.value;
-                var breadcrumbs = [ ...detail.breadcrumbs ];
+                var path = "projects" + delim + scope.current.project + delim + "groups" + delim + name;
+                var field = args.field;
+                var source = field.source;
+                var data =
+                {
+                    color: "#" + app.utils.hex(),
+                    name: name,
+                    parent: args.data[ source.key ],
+                    visible: true
+                };
+                var params =
+                {
+                    output: "static",
+                    path: path,
+                    value: data
+                };
+                var breadcrumbs = [ ...args.breadcrumbs ];
                     breadcrumbs.push( name );
-                var path = detail.params.path.split( delim );
-                    path.push( name );
-                var params = Object.assign( {}, detail.params );
-                    params.path = path.join( delim );
-                    params.value = { color: "#" + app.utils.hex(), name: name, parent: detail.params.value, visible: true, expand: false };
-                var data = detail.params.data;
-                    data.push( params.value );
 
                 scope.current.set( "name", name );
-                scope.current.setGroups( breadcrumbs );
 
-                app.setters.db( params, Forms.points.segments );
+                app.setters.db( params, callback );
+
+                function callback()
+                {
+                    var parent = source.data.find( parent => parent[ source.key ] == data.parent ) || {};
+                        parent.children = [ ...parent.children || [], data ];
+                        parent.expand = true;
+
+                    source.data.push( data );
+
+                    scope.current.setGroups( breadcrumbs );
+
+                    field.render();
+                    field.update( name );
+
+                    Forms.points.segments();
+                }
             },
             breadcrumbs: ( map, args, callback ) =>
             {
@@ -325,6 +349,8 @@ const Designer = function()
             },
             select: ( args ) =>
             {
+                scope.current.set( "name", args.value );
+
                 Process.group.visibility( args );
                 Forms.points.segments();
             },
@@ -513,7 +539,7 @@ const Designer = function()
                     Process.hooks.group.name.state( name );
 
                     // update the segments
-                    Forms.points.segments();
+                    //Forms.points.segments();
                     Process.hooks.points.segment.update( Raycaster.selected.segment );
                     Process.hooks.points.segment.state( Raycaster.selected.segment );
 
@@ -776,6 +802,10 @@ const Designer = function()
                     Process.hooks.points.segment.refresh( refresh );
                 } );
             },
+            select: ( field ) =>
+            {
+                console.log( field );
+            },
             unlight: ( group, key ) =>
             {
                 group.children.forEach( ( child ) =>
@@ -851,8 +881,8 @@ const Designer = function()
             select: () =>
             {
                 var form = new DB.Forms( { parent: app.ui.widget, type: "horizontal" } );
-                var tab = form.add( { name: "Select Group" } );
-                var group = new form.Composite( { parent: tab, config: { numbers: false, headings: true } } );
+                var tab0 = form.add( { name: "Select Group", selected: true } );
+                var group = new form.Composite( { parent: tab0, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
                     group.init(
                     [
                         new group.Col(
@@ -860,10 +890,15 @@ const Designer = function()
                             name: "name",
                             type: "tree",
                             value: null,
-                            handlers: [ new group.Handler( { event: "click", handler: Process.group.select } ), new group.Handler( { event: "toggle", handler: Process.group.toggle } ) ],
+                            handlers: [ new group.Handler( { event: "add", handler: Process.group.add } ), new group.Handler( { event: "click", handler: Process.group.select } ), new group.Handler( { event: "toggle", handler: Process.group.toggle } ) ],
                             source: new group.Source( { key: "name", data: scope.current.data.groups } )
                         } )
                     ] );
+
+                Process.hooks.group =
+                {
+                    form: form
+                };
             }
         },
         points:
@@ -893,7 +928,25 @@ const Designer = function()
             },
             segments: () =>
             {
-                console.warn( "show points data" );
+                var data = scope.current.data.points.filter( obj => obj.name == scope.current.name )[ 0 ];
+                var form = Process.hooks.group.form;
+                var tab1 = form.add( { name: "Select Segment" } );
+                var segment = new form.Composite( { parent: tab1, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    segment.init(
+                    [
+                        new segment.Col(
+                        {
+                            name: "segment",
+                            type: "label",
+                            options: segment.from.object.to.options( new segment.Source( { key: "name", data: data } ) ),
+                            handlers: [ { event: "click", handler: Process.segments.select } ]
+                        } )
+                    ] );
+
+                //var options = segment.from.object.to.options( new segment.Source( { key: "name", data: data } ) );
+
+                //console.log( segment );
+
                 /*var data = scope.current.data.points;
                 var form = new DB.Forms();
                     form.init( { name: "segments", parent: app.ui.widget, title: "Segments" } );
@@ -951,7 +1004,7 @@ const Designer = function()
         {
             const size = scope.settings.grid.size;
             const spacing = scope.settings.grid.spacing;
-            const lines = [ new THREE.Color( 0x030303 ), new THREE.Color( 0x010101 ) ];
+            const lines = [ new THREE.Color( 0x030303 ), new THREE.Color( 0x020202 ) ];
             const y = -0.01;
 
             this.object = new THREE.Mesh( new THREE.PlaneBufferGeometry( size.x, size.z, 1, 1 ).rotateX( -Math.PI * 0.5 ), new THREE.MeshBasicMaterial( { color: new THREE.Color( 0x010101 ), transparent: true, opacity: 0.75 } ) );

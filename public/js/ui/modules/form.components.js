@@ -11,6 +11,7 @@ export const Components =
 
         this.element = document.createElement( "div" );
         this.element.classList.add( "formbutton" );
+        this.element.addEventListener( "click", () => this.action( this ), false );
 
         this.handlers.forEach( type => this.element.addEventListener( type.event, () => type.handler( field ), false ) );
 
@@ -178,6 +179,39 @@ export const Components =
         }, false );
 
         this.parent.appendChild( this.element );
+    },
+    
+    label: function()
+    {
+        var field = this;
+
+        this.required = true;
+        
+        this.element = document.createElement( "div" );
+        this.element.innerHTML = null;
+        this.element.setAttribute( "id", field.id );
+        this.element.setAttribute( "name", this.name );
+        
+        this.parent.appendChild( this.element );
+        
+        // handlers
+        var handlers = {};
+
+        this.handlers.forEach( type => handlers[ type.event ] = type.handler );
+        
+        this.options.forEach( option =>
+        {
+            var item = document.createElement( "div" );
+                item.innerText = option.text;
+                item.classList.add( "formlink" );
+                item.style.textAlign = "left";
+                item.addEventListener( "click", () => handlers.click( option ), false );
+
+            if ( option.text == this.value )
+                item.classList.add( "formselected" );
+
+            this.element.appendChild( item );
+        } );
     },
 
     object: function()
@@ -352,24 +386,17 @@ export const Components =
 
         // element
         this.element = document.createElement( "input" );
-        /*this.element.setAttribute( "id", this.id );
+        this.element.setAttribute( "id", this.id );
         this.element.setAttribute( "name", this.name );
-        this.element.setAttribute( "type", "text" );
+        this.element.setAttribute( "type", "hidden" );
         this.element.setAttribute( "value", this.value );
-        this.element.setAttribute( "readonly", true );
-        this.element.style.cursor = "pointer";
-        this.element.addEventListener( "click", function()
-        {
-            items.classList.toggle( "formtreeexpand" );
-        } );*/
+
+        this.parent.appendChild( this.element );
 
         // handlers
         var handlers = {};
 
-        this.handlers.forEach( type =>
-        {
-            handlers[ type.event ] = type.handler;
-        } );
+        this.handlers.forEach( type => handlers[ type.event ] = type.handler );
 
         // items
         var items = this.parent.querySelector( `[ data-name = "${ this.name }" ]` ) || document.createElement( "div" );
@@ -379,7 +406,15 @@ export const Components =
 
         this.parent.appendChild( items );
 
-        // functions
+        // private functions
+        function add( args )
+        {
+            args.field = field;
+
+            if ( handlers.add )
+                handlers.add( args );
+        }
+
         function click( args )
         {
             var value = args.value;
@@ -389,10 +424,7 @@ export const Components =
             state( args.element, value );
 
             if ( handlers.click )
-            {
-                args.field = field;
                 handlers.click( args );
-            }
         }
 
         function show( item )
@@ -422,13 +454,11 @@ export const Components =
                 } );
 
             if ( handlers.toggle )
-            {
-                args.field = field;
                 handlers.toggle( args );
-            }
         }
 
-        var render = () =>
+        // public methods
+        this.render = () =>
         {
             var i = 0;
             var root = this.source.data.find( obj => !obj.parent );
@@ -503,15 +533,13 @@ export const Components =
                     icon.style.border = "1px solid transparent";
                 }
 
-                console.log( "handlers.add" );
-
                 // add field
                 if ( handlers.add )
                 {
                     // new child ( toggled )
-                    let add = document.createElement( "li" );
-                        add.classList.add( "formadd" );
-                        add.classList.add( "hide" );
+                    let li = document.createElement( "li" );
+                        li.classList.add( "formadd" );
+                        li.classList.add( "hide" );
                     let icon = document.createElement( "div" );
                         icon.innerText = String.fromCodePoint( 8627 );
                         icon.classList.add( "formswitch" );
@@ -528,28 +556,30 @@ export const Components =
                         action.setAttribute( "title", `add child to ${ value }` );
                         action.addEventListener( "click", () =>
                         {
-                            //params.data = response.data;
-                            //params.value = value;
-
-                            //tree.value = input.value;
-                            //tree.element.value = input.value;
                             field.update( input.value );
 
-                            // TODO: add
-                            //handlers.add( { field: tree, breadcrumbs: breadcrumbs, params: params } );
+                            var args =
+                            {
+                                breadcrumbs: breadcrumbs,
+                                data: data,
+                                element: action,
+                                value: input.value
+                            };
+
+                            add( args );
                         }, false  );
 
-                    add.appendChild( icon );
-                    add.appendChild( input );
-                    add.appendChild( action );
-                    ul.appendChild( add );
+                    li.appendChild( icon );
+                    li.appendChild( input );
+                    li.appendChild( action );
+                    ul.appendChild( li );
 
                     // add child button ( showing )
                     let button = document.createElement( "div" );
-                        button.innerText = String.fromCodePoint( 8627 );
+                        button.innerText = String.fromCodePoint( 8628 );
                         button.classList.add( "formbutton" );
                         button.setAttribute( "title", `add child to ${ value }` );
-                        button.addEventListener( "click", () => show( add, ul, value ), false );
+                        button.addEventListener( "click", () => show( li, ul, value ), false );
 
                     item.appendChild( button );
                 }
@@ -590,11 +620,6 @@ export const Components =
             }
         };
 
-        //this.refresh = ( params, callback ) => this.data.source.getter( params, ( response ) => callback( response, params ) );
-        //this.refresh( this.data.source.params, render );
-        //console.log( this );
-        render();
-
         this.state = ( value ) =>
         {
             var item = items.querySelector( `[ data-value = "${ value }" ]` );
@@ -602,6 +627,8 @@ export const Components =
 
             state( label, value );
         };
+
+        this.render();
     },
 
     vector: function()

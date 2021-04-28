@@ -14,24 +14,67 @@ export function Container( args )
 
     this.tabs =
     {
-        names: [],
-        contents: {}
+        contents: {},
+        elements: [],
+        names: []
     };
 
     this.add = ( args ) =>
     {
-        var tab = Utils.create( "form-tab" );
-            tab.innerText = args.name;
-            tab.setAttribute( "data-tab", args.name );
-        var content = Utils.create( "form-content" );
-            content.setAttribute( "data-tab", args.name );
+        var click = function()
+        {
+            this.tabs.names.forEach( obj => obj.selected = false );
 
-        this.tabs.names.push( args.name );
+            var index = Number( tab.dataset.index );
+
+            this.tabs.names[ index ].selected = true;
+
+            this.select();
+        }.bind( this );
+
+        var tab = tabs.querySelector( `[ data-name = "${ args.name }" ]` ) || Utils.create( "form-tab" );
+            tab.innerText = args.name;
+            tab.setAttribute( "data-name", args.name );
+            tab.setAttribute( "data-index", this.tabs.elements.length );
+            tab.onclick = click;
+
+        var content = Utils.create( "form-content" );
+            content.setAttribute( "data-name", args.name );
+
         this.tabs.contents[ args.name ] = content;
+        this.tabs.elements.push( tab );
+        this.tabs.names.push( { name: args.name, selected: !!args.selected || this.tabs.elements.length == 1 } );
 
         tabs.appendChild( tab );
         contents.appendChild( content );
+
+        this.select();
         
         return content;
+    };
+
+    this.change = ( value ) =>
+    {
+        // TODO: match value to name or index
+        // find index and select tab
+    };
+
+    this.select = () =>
+    {
+        for ( let i = 0; i < this.tabs.elements.length; i++ )
+        {
+            let tab = this.tabs.elements[ i ];
+
+            let content = this.tabs.contents[ tab.getAttribute( "data-name" ) ];
+                content.classList.add( "hide" );
+
+            tab.classList.remove( "form-tab-selected" );
+
+            if ( this.tabs.names[ i ].selected )
+            {
+                tab.classList.add( "form-tab-selected" );
+                content.classList.remove( "hide" );
+            }
+        }
     };
 }

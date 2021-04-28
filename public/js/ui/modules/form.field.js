@@ -57,6 +57,7 @@ function Field( args )
         case "color":
         case "combo":
         case "cycle":
+        case "label":
         case "object":
         case "select":
         case "submit":
@@ -65,15 +66,15 @@ function Field( args )
         case "vector":
             Components[ this.type ].call( this );
         break;
-
-        console.warn( this.type );
     }
 
     // events
     switch( this.type )
     {
         case "click":
+        case "label":
         case "submit":
+        case "tree":
         break;
 
         default:
@@ -87,6 +88,7 @@ function Field( args )
         case "click":
         case "color":
         case "cycle":
+        case "label":
         case "select":
         case "toggle":
         case "vector":

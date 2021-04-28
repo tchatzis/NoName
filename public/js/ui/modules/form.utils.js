@@ -71,6 +71,7 @@ const Utils =
 
             case "combo":
             case "cycle":
+            case "label":
             case "select":
             case "tree":
                 args.value = args.value || "";
@@ -90,6 +91,9 @@ const Utils =
                 args.value = args.value || { x: 0, y: 0, z: 0 };
             break;
         }
+
+        // pass action from composite to field
+        args.action = this.action;
 
         return new Field( args );
     },

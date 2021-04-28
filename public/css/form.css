@@ -51,7 +51,7 @@ select, input[ type=button ], input[ type=submit ]
 
 input[ type=number ]
 {
-    max-width: 50px;
+    max-width: 45px;
     height: 21px;
     color: lime;
 }
@@ -104,23 +104,25 @@ input:disabled
 .formbutton
 {
     user-select: none;
-    font-size: 17px;
-    font-family: Courier, Monaco, monospace;
+    font-size: 1.5em;
     text-align: center;
-    color: cyan;
     cursor: pointer;
-    border: 1px solid #666;
-    border-radius: 50%;
+    border-radius: 4px;
     min-height: 21px;
     min-width: 21px;
-    background-color: black;
+    margin-left: 4px;
     margin-right: 4px;
+
+    border: 1px solid #333;
+    background-color: #666;
+    color: black;
 }
 
 .formbutton:hover
 {
-    background-color: silver;
-    color: black;
+    border: 1px solid #666;
+    background-color: black;
+    color: silver;
 }
 
 .formcollapsed
@@ -234,7 +236,7 @@ input:disabled
 .formkey
 {
     margin: 0;
-    padding: 0 4px 0 6px;
+    padding-right: 4px;
     display: inline-block;
     vertical-align: middle;
 }
@@ -316,7 +318,7 @@ input:disabled
     border: 1px solid #333;
     border-bottom: 1px solid transparent;
     border-radius: 4px 4px 0 0;
-    color: silver;
+    color: #666;
     display: inline-block;
     padding: 5px 10px 5px 5px;
     white-space: nowrap;
@@ -332,6 +334,12 @@ input:disabled
 .form-tabs
 {
     pointer-events: auto;
+}
+
+.form-tab-selected
+{
+    color: silver;
+    pointer-events: none;
 }
 
 .formtitle
