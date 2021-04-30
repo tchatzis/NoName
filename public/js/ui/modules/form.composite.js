@@ -1,11 +1,11 @@
-import { Field, Utils } from './form.utils.js';
+import { Constructors } from './form.constructors.js';
+import { Utils } from './form.utils.js';
 
 export function Composite( args )
 {
     Object.assign( this, args );
 
     var composite = this;
-        composite.name = composite.parent.getAttribute( "data-name" );
     var labels = {};
 
     // add row and columns
@@ -15,7 +15,7 @@ export function Composite( args )
 
         var promises = [];
 
-        columns.forEach( ( col, index ) => promises.push( this.table.row.col.add( col, index ) ) );
+        columns.forEach( ( args, index ) => promises.push( this.table.row.col.add( args, index ) ) );
 
         return Promise.all( promises );
     }.bind( this );
@@ -29,6 +29,7 @@ export function Composite( args )
             var element = Utils.create( "table-cell" );
                 element.setAttribute( "data-col", index );
                 element.setAttribute( "data-row", this.row.index );
+
             if ( composite.config.borders == true )
                 element.classList.add( "table-border" );
 
@@ -50,6 +51,7 @@ export function Composite( args )
 
             var data =
             {
+                break: args.break,
                 col: index,
                 element: element,
                 field: this.field,
@@ -100,30 +102,47 @@ export function Composite( args )
         // this runs once upon initialization
         this.define = ( data ) =>
         {
-            // set the headings and labels
-            var headings = Utils.create( "table-row" );
+            var count = 0;
 
-            if ( composite.config.numbers !== false )
-                headings.appendChild( Utils.create( "table-number" ) );
-
-            var heading = function( field )
-            {
-                labels[ field.col ] = Utils.create( "table-heading" );
-                headings.appendChild( labels[ field.col ] );
-                composite.label( field.col, field.name );
-            }.bind( this );
-
-            if ( composite.config.headings !== false )
-                this.table.element.prepend( headings );
-
-            this.labels = {};
+            //this.labels = {};
             this.defaults = [];
 
-            // append the columns in the same order as the fields are defined
             // put a handle on the fields
             this.fields = data.map( d =>
             {
-                this.element.appendChild( d.element );
+                if ( d.break )
+                {
+                    let row = Utils.create( "table-row" );
+                        row.appendChild( d.element );
+
+                    let parent = this.element.parentNode;
+                        parent.appendChild( row );
+
+                    this.element = row;
+
+                    count = 0;
+                }
+                else
+                    this.element.appendChild( d.element );
+
+                // add headings
+                if ( !count && composite.config.headings !== false )
+                {
+                    labels[ d.field.col ] = Utils.create( "table-heading" );
+
+                    let headings = Utils.create( "table-row" );
+                        headings.appendChild( labels[ d.field.col ] );
+
+                    if ( composite.config.numbers !== false )
+                        headings.appendChild( Utils.create( "table-number" ) );
+
+                    let parent = this.element.parentNode;
+                        parent.insertBefore( headings, this.element );
+
+                    composite.label( d.field.col, d.field.name );
+                }
+
+                count++;
 
                 return d.field;
             } );
@@ -132,12 +151,7 @@ export function Composite( args )
             this.cols.sort( ( a, b ) => a.col > b.col ? 1 : -1 );
 
             // set the column headings, fields and defaults
-            this.cols.forEach( col =>
-            {
-                this.defaults.push( Utils.copy( col.field.value ) );
-
-                heading( col.field );
-            } );
+            this.cols.forEach( col => this.defaults.push( Utils.copy( col.field.value ) ) );
         };
 
         this.delete = ( field ) =>
@@ -231,7 +245,8 @@ export function Composite( args )
     {
         this.dimensions = { cols: 0, rows: 0 };
 
-        this.element = Utils.create( "table-form" );
+        this.element = composite.parent.querySelector( ".table-form" ) || Utils.create( "table-form" );
+        this.element.innerHTML = null;
 
         this.row = new Row( this );
 
@@ -239,6 +254,46 @@ export function Composite( args )
 
         composite.parent.appendChild( this.element );
     };
+
+    // replace column data with form.constructors
+    var normalize = function( columns )
+    {
+        var normalized = [];
+
+        columns.forEach( column =>
+        {
+            var col = new this.Col( column );
+
+            for ( let prop in col )
+            {
+                if ( col.hasOwnProperty( prop ) )
+                {
+                    switch( prop )
+                    {
+                        case "destination":
+                            col[ prop ] = new this.Destination( col[ prop ] );
+                        break;
+
+                        case "handlers":
+                            col[ prop ].map( data => new this.Handler( data ) );
+                        break;
+
+                        case "options":
+                            col[ prop ].map( data => new this.Option( data ) );
+                        break;
+
+                        case "source":
+                            col[ prop ] = new this.Source( col[ prop ] );
+                        break;
+                    }
+                }
+            }
+
+            normalized.push( col );
+        } );
+
+        return normalized;
+    }.bind( this );
     
     // add / delete row with click
     this.action = ( field ) =>
@@ -249,47 +304,6 @@ export function Composite( args )
             this.table.row.delete( field );
     };
 
-    // add row with data
-    this.append = ( data ) =>
-    {
-        console.log( composite, data );
-    };
-
-    // column definition object
-    this.Col = function( args )
-    {
-        // required
-        Object.defineProperty( this, "name",
-        {
-            value: args.name,
-            enumerable: true,
-            writeable: false,
-            configurable: false
-        } );
-
-        this.type = args.type || "text";
-
-        // suggested
-        this.value = args.value || null;
-        this.handlers = args.handlers || [];
-
-        // optional
-        this.col = args.col || 0;
-        this.row = args.row || 0;
-
-        // only if defined
-        if ( args.destination )
-            this.destination = args.destination;
-
-        if ( args.options )
-            this.options = args.options;
-        else
-            if ( args.source )
-                this.source = args.source;
-
-        //console.warn( this );
-    };
-
     this.from =
     {
         object:
@@ -298,15 +312,17 @@ export function Composite( args )
             {
                 options: ( args ) =>
                 {
-                    var source = args.data;
+                    var source = new this.Source( args );
+                    var data = source.data;
                     var options = [];
-                    var keys = Object.keys( source );
-                        keys.splice( keys.indexOf( args.key ), 1 );
-                        keys.sort();
-                        keys.forEach( name =>
-                        {
-                            options.push( new this.Option( name, source[ name ] ) );
-                        } );
+
+                    if ( data )
+                    {
+                        let keys = Object.keys( data );
+                            keys.splice( keys.indexOf( source.key ), 1 );
+                            keys.sort();
+                            keys.forEach( name => options.push( new this.Option( name, data[ name ] ) ) );
+                    }
 
                     return options;
                 }
@@ -331,7 +347,7 @@ export function Composite( args )
         this.table = new Table();
         this.element = this.table.element;
 
-        var data = await add( columns );
+        var data = await add( normalize( columns ) );
 
         this.table.row.define( data );
 
@@ -342,5 +358,5 @@ export function Composite( args )
 
     this.label = ( col, value ) => labels[ col ].innerText = value;
 
-    Field.call( this );
+    Constructors.call( this );
 }

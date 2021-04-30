@@ -58,6 +58,7 @@ function Field( args )
         case "combo":
         case "cycle":
         case "label":
+        case "match":
         case "object":
         case "select":
         case "submit":
@@ -66,6 +67,10 @@ function Field( args )
         case "vector":
             Components[ this.type ].call( this );
         break;
+
+        default:
+            console.warn( this.type, "field is not defined" );
+        break;
     }
 
     // events
@@ -73,6 +78,7 @@ function Field( args )
     {
         case "click":
         case "label":
+        case "match":
         case "submit":
         case "tree":
         break;
@@ -105,65 +111,6 @@ function Field( args )
     }
 
     this.validate = () => Utils.validate( this );
-
-    // constructors
-    this.Destination = function( args )
-    {
-        this.key = args.key;
-
-        if ( args.path )
-        {
-            this.type = "db";
-            this.path = args.path;
-            this.output = args.output || "static";
-
-            if ( args.map )
-                this.map = args.map;
-
-            return;
-        }
-
-        if ( args.data )
-        {
-            this.type = "object";
-            this.data = args.data;
-        }
-    };
-
-    this.Handler = function( args )
-    {
-        this.event = args.event;
-        this.handler = args.handler || console.warn( this.event, "is not defined" );
-    };
-
-    this.Option = function( text, value )
-    {
-        this.text = text;
-        this.value = typeof value == "undefined" ? text : value;
-    };
-
-    this.Source = function( args )
-    {
-        this.key = args.key;
-
-        if ( args.path )
-        {
-            this.type = "db";
-            this.path = args.path;
-            this.output = args.output || "static";
-
-            if ( args.map )
-                this.map = args.map;
-
-            return;
-        }
-
-        if ( args.data )
-        {
-            this.type = "object";
-            this.data = args.data;
-        }
-    };
 }
 
 export { Field };

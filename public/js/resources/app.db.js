@@ -136,42 +136,31 @@ const DB = function()
 
     app[ scope ].catch = ( error ) => console.error ( error );
 
-    /*app[ scope ].delete = ( path, callback ) =>
+    app[ scope ].delete =
     {
-        var ref = reference( path );
-            ref.delete().then( callback ).catch( app[ scope ].catch );
-    };*/
+        collection: async ( params, callback ) =>
+        {
+            var data = await app[ scope ].get( params, callback );
 
-    app[ scope ].deleteField = ( params, callback ) =>
-    {
-        var ref = reference( params );
-            ref.update( { [ params.map ]: fv.delete() } );
-        var output = new Output( ref, params, callback );
+            console.log( data );
+        },
 
-        return output[ params.output ]();
+        doc: ( params, callback ) =>
+        {
+            var ref = reference( params );
+                ref.delete().then( callback ).catch( app[ scope ].catch );;
+        },
+
+        field: ( params, callback ) =>
+        {
+            var ref = reference( params );
+                ref.update( { [ params.map ]: fv.delete() } );
+
+            var output = new Output( ref, params, callback );
+
+            return output[ params.output ]();
+        }
     };
-
-    /*app[ scope ].get = ( params, callback ) =>
-    {
-        var ref = reference( params );
-            ref.get()
-                .then( ( response ) =>
-                {
-                    var data = [];
-
-                    if ( response.docs )
-                        data = response.docs.map( doc => doc.data() ) || [];
-
-                    if ( response.data )
-                        data = response.data() || [];
-
-                    if ( callback )
-                        callback( { data: data } );
-                } )
-                .catch( app[ scope ].catch );
-
-        console.log( ref );
-    };*/
 
     app[ scope ].get = ( params, callback ) =>
     {
@@ -242,15 +231,14 @@ const DB = function()
             ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
     };*/
     
-    app[ scope ].addDoc = ( params, callback ) =>
+    /*app[ scope ].addDoc = ( params, callback ) =>
     {
         var ref = reference( params );
             ref.doc( params.key ).set( params.value ).catch( app[ scope ].catch );
 
         var output = new Output( ref, params, callback );
             output[ params.output ]();
-    };
-    
+    };*/
 
     // does not overwrite entire doc
     app[ scope ].set = ( params, callback ) =>

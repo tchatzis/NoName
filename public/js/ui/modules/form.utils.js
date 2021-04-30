@@ -78,6 +78,9 @@ const Utils =
                 args.options = args.options || await options( args.source );
             break;
 
+            case "match":
+            break;
+
             case "object":
                 args.value = args.value || { a: "amanda", b: "bob", c: "cathy", d: "dave" };
             break;
@@ -92,8 +95,8 @@ const Utils =
             break;
         }
 
-        // pass action from composite to field
-        args.action = this.action;
+        // pass composite to field
+        args.composite = this;
 
         return new Field( args );
     },
@@ -105,6 +108,7 @@ const Utils =
             // checks
             boolean:    ( value ) => typeof value == "boolean",
             defined:    ( value ) => typeof value !== "undefined",
+            matched:    ( value1, value2 ) => value1 == value2,
             notnull:    ( value ) => value !== null,
             number:     ( value ) => typeof value == "number" && !isNaN( value ),
             populated:  ( value ) => value !== "" && is.notnull( value ) && is.defined( value ),
@@ -119,6 +123,7 @@ const Utils =
             datalist:   () => is.populated( field.value ),
             hidden:     () => is.populated( field.value ),
             list:       () => is.populated( field.value ),
+            match:      () => is.matched( field.value, field.element.value ),
             object:     () => Object.keys( field.value ).every( key => is.populated( field.value[ key ] ) ),
             range:      () => is.number( Number( field.value ) ),
             readonly:   () => is.populated( field.value ),
@@ -137,12 +142,18 @@ const Utils =
 
         if ( !valid )
         {
-            element.classList.add( "forminvalid" );
             field.element.focus();
+
+            element.classList.add( "forminvalid" );
+
             //scope.message.add( field.name, `${ field.name } is not valid`, error, 10 );
         }
         else
         {
+            let event = new CustomEvent( "valid", { detail: field } );
+
+            field.element.dispatchEvent( event );
+
             element.classList.remove( "forminvalid" );
             //scope.message.cancel();
         }

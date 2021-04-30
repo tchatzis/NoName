@@ -161,7 +161,6 @@ export const Components =
     input: function()
     {
         var field = this;
-        //var type = this.type == "validate" ? "submit" : this.type;
 
         this.element = document.createElement( "input" );
         this.element.setAttribute( "name", this.name );
@@ -198,7 +197,7 @@ export const Components =
         var handlers = {};
 
         this.handlers.forEach( type => handlers[ type.event ] = type.handler );
-        
+
         this.options.forEach( option =>
         {
             var item = document.createElement( "div" );
@@ -212,6 +211,55 @@ export const Components =
 
             this.element.appendChild( item );
         } );
+    },
+
+    match: function()
+    {
+        var field = this;
+        var div = document.createElement( "div" );
+            div.classList.add( "formsxs" );
+
+        this.parent.appendChild( div );
+
+        this.element = document.createElement( "input" );
+        this.element.setAttribute( "name", this.name );
+        this.element.setAttribute( "placeholder", this.value );
+        this.element.setAttribute( "type", "text" );
+        this.element.setAttribute( "value", "" );
+        this.element.setAttribute( "autocomplete", "off" );
+        if ( this.type == "readonly" )
+            this.element.setAttribute( "readonly", "" );
+        this.element.addEventListener( "input", function()
+        {
+            match( this.value );
+        }, false );
+
+        div.appendChild( this.element );
+
+        // handlers
+        var handlers = {};
+
+        this.handlers.forEach( type => handlers[ type.event ] = type.handler );
+
+        var button = document.createElement( "div" );
+            button.classList.add( "formbutton" );
+            button.innerText = this.icon || String.fromCodePoint( 8680 );
+            button.addEventListener( "click", () => handlers.click( this ), false );
+
+        div.appendChild( button );
+
+        function match( value )
+        {
+            if ( Utils.validate( field ) )
+            {
+                field.update( value );
+                button.classList.remove( "formdisabled" );
+            }
+            else
+                button.classList.add( "formdisabled" );
+        }
+
+        match();
     },
 
     object: function()

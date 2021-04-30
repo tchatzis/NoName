@@ -123,8 +123,6 @@ const Designer = function()
 
     function Data()
     {
-        this.params = {};
-
         Object.defineProperty( this, "assign",
         {
             enumerable: false,
@@ -250,6 +248,7 @@ const Designer = function()
                     breadcrumbs.push( name );
 
                 scope.current.set( "name", name );
+                scope.current.set( "group", scope.group.getObjectByName( name ) );
 
                 app.setters.db( params, callback );
 
@@ -287,6 +286,29 @@ const Designer = function()
 
                     app.setters.db( params, ( response ) => callback( { name: name, value: response.data, data: args.data } ) );
                 } );
+            },
+            color: ( event ) =>
+            {
+                var field = event.detail;
+                var delim = "/";
+                var params =
+                {
+                    map: "color",
+                    output: "static",
+                    path: "projects" + delim + scope.current.project + delim + "groups" + delim + scope.current.name,
+                    value: "#" + field.value
+                };
+
+                app.setters.db( params, callback );
+
+                function callback()
+                {
+                    scope.current.group.children.forEach( ( line ) =>
+                    {
+                        if ( line.material )
+                            line.material.color = new THREE.Color( params.value );
+                    } );
+                }
             },
             define: ( key, data ) =>
             {
@@ -340,6 +362,30 @@ const Designer = function()
 
                 traverse( root );
             },
+            delete: ( field ) =>
+            {
+                var delim = "/";
+                var path = "projects" + delim + scope.current.project + delim + "groups" + delim + field.value;
+
+                [ "groups", "points" ].forEach( prop =>
+                {
+                    var index = scope.current.data[ prop ].findIndex( obj => obj.name == field.value );
+
+                    scope.current.data[ prop ].splice( index, 1 );
+                } );
+
+                var group = scope.group.getObjectByName( field.value );
+                var parent = group.parent;
+                    parent.remove( group );
+
+                scope.current.set( "name", scope.group.name );
+                scope.current.set( "group", scope.group );
+
+                // TODO: delete from db
+                // close edit group and group segments tabs
+                //console.log( group, scope.group.children );
+                console.log( field, group, scope.current.group );
+            },
             opacity: ( name, obj ) =>
             {
                 obj.children.forEach( ( child ) => Process.group.opacity( name, child ) );
@@ -350,8 +396,10 @@ const Designer = function()
             select: ( args ) =>
             {
                 scope.current.set( "name", args.value );
+                scope.current.set( "group", scope.group.getObjectByName( args.value ) );
 
                 Process.group.visibility( args );
+                Forms.group.edit();
                 Forms.points.segments();
             },
             toggle: ( args ) =>
@@ -394,10 +442,10 @@ const Designer = function()
             Raycaster.mode = "move";
             Process.mode.set( { points: Raycaster.mode } );
         },
-        lines:
+        /*lines:
         {
             close: () => Objects.lines.close()
-        },
+        },*/
         mode:
         {
             reset: ( key ) => delete Process.mode.status[ key ],
@@ -600,6 +648,7 @@ const Designer = function()
 
                     scope.current.set( "project", project );
                     scope.current.set( "name", scope.group.name );
+                    scope.current.set( "group", scope.group );
                     scope.current.set( "data", {} );
 
                     // resolve all promises
@@ -609,7 +658,7 @@ const Designer = function()
 
                         for ( let collection of collections )
                         {
-                            let source = new field.Source( cell.field.source );
+                            let source = new field.composite.Source( cell.field.source );
                                 source.path = source.path + delim + project + delim + collection;
                             let response = await app.db.get( source );
 
@@ -670,9 +719,11 @@ const Designer = function()
         },
         segments:
         {
-            add: ( field ) =>
+            add: ( args ) =>
             {
-                var params = {};
+                // TODO: add segment
+                console.log( args );
+                /*var params = {};
                     params.map = field.value;
                     params.output = "realtime";
                     params.value = [];
@@ -704,7 +755,7 @@ const Designer = function()
                     };
 
                     Process.hooks.points.segment.refresh( refresh );
-                } );
+                } );*/
             },
             change: ( event ) =>
             {
@@ -842,57 +893,44 @@ const Designer = function()
             select: () =>
             {
                 var form = new DB.Forms( { parent: app.ui.modal, type: "horizontal" } );
-                var tab = form.add( { name: "Select Project" } );
-                var project = new form.Composite( { parent: tab, config: { numbers: false, headings: true } } );
-                    project.init(
+                    form.tab.add( { name: "Select Project", config: { numbers: false, headings: true } } );
+                    form.composite.init(
                     [
-                        new project.Col( { name: "name", type: "combo", value: null, source: new project.Source( { key: "name", path: "projects", output: "static" } ) } ),
-                        new project.Col( { name: null, type: "submit", value: "select", handlers: [ new project.Handler( { event: "click", handler: Process.project.load } ) ] } )
+                        { name: "name", type: "combo", source: { key: "name", path: "projects", output: "static" } },
+                        { name: null, type: "submit", value: "select", handlers: [ { event: "click", handler: Process.project.load } ] }
                     ] );
-
-                /*var test = new form.Composite( { name: "test", parent: document.body } );
-                    test.init(
-                    [
-                        new test.Col( { name: "color", type: "color", value: "996666" } ),
-                        new test.Col( { name: "combo", type: "combo", value: "tito", params: { key: "name", path: "projects", output: "static" } } ),
-                        new test.Col( { name: "cycle", type: "cycle", value: "three", options: [ new test.Option( "one", 1 ), new test.Option( "two", 2 ), new test.Option( "three", 3 ) ] } ),
-                        new test.Col( { name: "input", type: "range", value: 10 } ),
-                        new test.Col( { name: "select", type: "select", value: "two", options: [ new test.Option( "one", 1 ), new test.Option( "two", 2 ), new test.Option( "three", 3 ) ] } ),
-                        new test.Col( { name: "toggle", type: "toggle", options: [ new test.Option( "on", true ), new test.Option( "off", false ) ] } ),
-                        new test.Col( { name: "vector", type: "vector" } ),
-                        new test.Col( { name: null, type: "click", handlers: [ { event: "click", handler: test.action } ] } )
-                    ] );
-
-                    test.element.addEventListener( "loaded", () =>
-                    {
-                        console.log( "data", test.get.data() );
-                        console.log( "defaults", test.get.defaults() );
-                        console.log( "field", test.get.field( 0, 3 ) );
-                        console.log( "schema", test.get.schema() );
-                        console.log( "size", test.get.size() );
-                        console.log( "value", test.get.value( 0, "select" ) );
-                    }, false );
-
-                    test.element.addEventListener( "next", ( e ) => console.log( e.detail ) );*/
             }
         },
         group:
         {
+            edit: () =>
+            {
+                var form = Process.hooks.group.form;
+                    form.tab.add( { name: "Edit Group", config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    form.composite.init(
+                    [
+                        {
+                            name: "delete", type: "match", icon: String.fromCodePoint( 10799 ), value: scope.current.name,
+                            handlers: [ { event: "click", handler: Process.group.delete } ]
+                        },
+                        {
+                            break: true,
+                            name: "color", type: "color", value: scope.current.data.groups.find( obj => obj.name == scope.current.name ).color.replace( "#", "" ),
+                            handlers: [ { event: "valid", handler: Process.group.color } ]
+                        }
+                    ] );
+            },
             select: () =>
             {
                 var form = new DB.Forms( { parent: app.ui.widget, type: "horizontal" } );
-                var tab0 = form.add( { name: "Select Group", selected: true } );
-                var group = new form.Composite( { parent: tab0, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
-                    group.init(
+                    form.tab.add( { name: "Select Group", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    form.composite.init(
                     [
-                        new group.Col(
                         {
-                            name: "name",
-                            type: "tree",
-                            value: null,
-                            handlers: [ new group.Handler( { event: "add", handler: Process.group.add } ), new group.Handler( { event: "click", handler: Process.group.select } ), new group.Handler( { event: "toggle", handler: Process.group.toggle } ) ],
-                            source: new group.Source( { key: "name", data: scope.current.data.groups } )
-                        } )
+                            name: "name", type: "tree", value: "",
+                            handlers: [ { event: "add", handler: Process.group.add }, { event: "click", handler: Process.group.select }, { event: "toggle", handler: Process.group.toggle } ],
+                            source: { key: "name", data: scope.current.data.groups }
+                        }
                     ] );
 
                 Process.hooks.group =
@@ -928,20 +966,25 @@ const Designer = function()
             },
             segments: () =>
             {
-                var data = scope.current.data.points.filter( obj => obj.name == scope.current.name )[ 0 ];
+                var data = scope.current.data.points.find( obj => obj.name == scope.current.name ) || [];
                 var form = Process.hooks.group.form;
-                var tab1 = form.add( { name: "Select Segment" } );
-                var segment = new form.Composite( { parent: tab1, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
-                    segment.init(
+                    form.tab.add( { name: "Group Segments", config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    form.composite.init(
                     [
-                        new segment.Col(
                         {
-                            name: "segment",
+                            name: `${ scope.current.name } segments`,
                             type: "label",
-                            options: segment.from.object.to.options( new segment.Source( { key: "name", data: data } ) ),
+                            options: form.composite.from.object.to.options( { key: "name", data: data } ),
                             handlers: [ { event: "click", handler: Process.segments.select } ]
-                        } )
+                        }
                     ] );
+                    form.composite.init(
+                    [
+                        { break: true, name: "new segment", type: "text" },
+                        { name: null, type: "submit", value: "Add", handlers: [ { event: "click", handler: Process.segments.add } ] }
+                    ] );
+
+                //console.log( data, form.composite.from.object.to.options( { key: "name", data: data } ) );
 
                 //var options = segment.from.object.to.options( new segment.Source( { key: "name", data: data } ) );
 

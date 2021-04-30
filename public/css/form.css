@@ -198,7 +198,7 @@ input:disabled
 
 .forminvalid
 {
-    background-color: red !important;
+    border: 1px solid red !important;
 }
 
 .formadd, .formitem, .formlist

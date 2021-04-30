@@ -2,8 +2,15 @@ import { Utils } from './form.utils.js';
 
 export function Container( args )
 {
+    var container = this;
     var tabs = Utils.create( "form-tabs" );
     var contents = Utils.create( "form-contents" );
+    var data =
+    {
+        contents: {},
+        elements: [],
+        names: []
+    };
 
     this.element = Utils.create( "form" );
     this.element.appendChild( tabs );
@@ -12,69 +19,65 @@ export function Container( args )
     this.parent = args.parent;
     this.parent.appendChild( this.element );
 
-    this.tabs =
+    this.Tab = function( args )
     {
-        contents: {},
-        elements: [],
-        names: []
-    };
-
-    this.add = ( args ) =>
-    {
-        var click = function()
+        var click = function( name )
         {
-            this.tabs.names.forEach( obj => obj.selected = false );
+            data.names.forEach( obj => obj.selected = false );
 
             var index = Number( tab.dataset.index );
 
-            this.tabs.names[ index ].selected = true;
+            data.names[ index ].selected = true;
 
-            this.select();
+            select( name );
         }.bind( this );
 
         var tab = tabs.querySelector( `[ data-name = "${ args.name }" ]` ) || Utils.create( "form-tab" );
             tab.innerText = args.name;
             tab.setAttribute( "data-name", args.name );
-            tab.setAttribute( "data-index", this.tabs.elements.length );
-            tab.onclick = click;
+            tab.setAttribute( "data-index", data.elements.length );
+            tab.onclick = () => click( args.name );
 
-        var content = Utils.create( "form-content" );
+        var content = contents.querySelector( `[ data-name = "${ args.name }" ]` ) || Utils.create( "form-content" );
             content.setAttribute( "data-name", args.name );
 
-        this.tabs.contents[ args.name ] = content;
-        this.tabs.elements.push( tab );
-        this.tabs.names.push( { name: args.name, selected: !!args.selected || this.tabs.elements.length == 1 } );
+        data.contents[ args.name ] = content;
+        data.elements.push( tab );
+        data.names.push( { name: args.name, selected: !!args.selected || data.elements.length == 1 } );
 
         tabs.appendChild( tab );
         contents.appendChild( content );
 
-        this.select();
+        select();
         
-        return content;
+        this.tab = tab;
+        this.content = content;
     };
 
-    this.change = ( value ) =>
+    this.select = ( name ) =>
     {
-        // TODO: match value to name or index
-        // find index and select tab
+        //data.contents[ name ].innerHTML = null;
+        console.log( name, data.contents[ name ] );
+
+        select();
     };
 
-    this.select = () =>
+    function select()
     {
-        for ( let i = 0; i < this.tabs.elements.length; i++ )
+        for ( let i = 0; i < data.elements.length; i++ )
         {
-            let tab = this.tabs.elements[ i ];
+            let tab = data.elements[ i ];
 
-            let content = this.tabs.contents[ tab.getAttribute( "data-name" ) ];
+            let content = data.contents[ tab.getAttribute( "data-name" ) ];
                 content.classList.add( "hide" );
 
             tab.classList.remove( "form-tab-selected" );
 
-            if ( this.tabs.names[ i ].selected )
+            if ( data.names[ i ].selected )
             {
                 tab.classList.add( "form-tab-selected" );
                 content.classList.remove( "hide" );
             }
         }
-    };
+    }
 }
