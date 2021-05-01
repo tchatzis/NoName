@@ -13,12 +13,13 @@ export const Constructors = function()
 
         this.break = !!args.break;
 
+        this.required = ( args.required !== false );
+
         this.type = args.type || "text";
 
         // suggested
         this.value = args.value || "";
         this.handlers = args.handlers || [];
-        this.required = args.required || false;
 
         // optional
         this.col = args.col || 0;
@@ -30,6 +31,9 @@ export const Constructors = function()
 
         if ( args.icon )
             this.icon = args.icon;
+
+        if ( args.multiple )
+            this.multiple = args.multiple;
 
         if ( args.options )
             this.options = args.options;

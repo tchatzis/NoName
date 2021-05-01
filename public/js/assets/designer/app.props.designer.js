@@ -4,6 +4,7 @@ const Designer = function()
     var scope = this;
     var axes = [ "x", "y", "z" ];
     var colors = [ 0x110000, 0x001100, 0x000011 ];
+    var delim = "/";
 
     scope.init = function( args )
     {
@@ -11,63 +12,11 @@ const Designer = function()
         Object.assign( scope, args );
 
         scope.groups = [];
-        scope.colors = [];
-        scope.current = {};
-
-        scope.settings =
-        {
-            marker: 0.05,
-            opacity: 0.25,
-            snap: 0.5,
-            grid:
-            {
-                size: { x: 40, y: 10, z: 40 },
-                spacing: { x: 5, y: 1, z: 5 },
-                position: { x: 0, y: -1, z: 0 }
-            }
-        };
+        scope.current = new Data();
 
         scope.group = new THREE.Group();
         scope.group.name = args.name;
         scope.parent.add( scope.group );
-
-        scope.grid = {};
-        scope.grid.group = new THREE.Group();
-        scope.grid.group.position.copy( scope.settings.grid.position );
-        scope.grid.group.name = "grid";
-        scope.grid.group.userData.ui = true;
-        Object.assign( scope.grid, new Helpers.Grid() );
-        scope.group.add( scope.grid.group );
-
-        scope.markers = {};
-        scope.markers.group = new THREE.Group();
-        scope.markers.group.name = "markers";
-        scope.markers.group.userData.ui = true;
-        scope.group.add( scope.markers.group );
-
-        scope.cursor = {};
-        scope.cursor.group = new THREE.Group();
-        scope.cursor.group.name = "cursor";
-        scope.cursor.group.visible = Raycaster.enabled;
-        scope.cursor.group.userData.ui = true;
-        Object.assign( scope.cursor, new Helpers.Marker( scope.cursor.group, 0.1, "white" ) );
-        scope.group.add( scope.cursor.group );
-
-        scope.crosshairs = {};
-        scope.crosshairs.group = new THREE.Group();
-        scope.crosshairs.group.name = "crosshairs";
-        scope.crosshairs.group.visible = Raycaster.enabled;
-        scope.crosshairs.group.userData.ui = true;
-        Object.assign( scope.crosshairs, new Helpers.Crosshairs() );
-        scope.group.add( scope.crosshairs.group );
-
-        /*scope.planes = {};
-        scope.planes.group = new THREE.Group();
-        scope.planes.group.name = "planes";
-        Object.assign( scope.planes, new Helpers.Planes( scope.planes.group ) );
-        scope.group.add( scope.planes.group );*/
-
-        scope.current = new Data();
 
         Process.init();
     };
@@ -211,7 +160,7 @@ const Designer = function()
                 var axis = input.name;
                 var value = Number( input.value );
 
-                Raycaster.snap[ axis ] = value % 1 || scope.settings.snap;
+                Raycaster.snap[ axis ] = value % 1 || scope.settings.grid.snap;
                 scope.grid.group.position[ axis ] = value;
 
                 // update the add field in the array
@@ -265,6 +214,7 @@ const Designer = function()
                     field.render();
                     field.update( name );
 
+                    Forms.group.edit();
                     Forms.points.segments();
                 }
             },
@@ -296,7 +246,7 @@ const Designer = function()
                     map: "color",
                     output: "static",
                     path: "projects" + delim + scope.current.project + delim + "groups" + delim + scope.current.name,
-                    value: "#" + field.value
+                    value: field.value
                 };
 
                 app.setters.db( params, callback );
@@ -365,13 +315,25 @@ const Designer = function()
             delete: ( field ) =>
             {
                 var delim = "/";
-                var path = "projects" + delim + scope.current.project + delim + "groups" + delim + field.value;
+                var params =
+                {
+                    path: "projects" + delim + scope.current.project + delim + "groups" + delim + field.value
+                };
 
                 [ "groups", "points" ].forEach( prop =>
                 {
+                    var data = scope.current.data[ prop ].find( obj => obj.name == field.value );
                     var index = scope.current.data[ prop ].findIndex( obj => obj.name == field.value );
 
-                    scope.current.data[ prop ].splice( index, 1 );
+                    // remove from parent.children
+                    if ( data )
+                    {
+                        let parent = scope.current.data[ prop ].find( obj => obj.name == data.parent );
+                            parent.children.splice( parent.children.findIndex( obj => obj.name == field.value ), 1 );
+                    }
+
+                    if ( index > -1 )
+                        scope.current.data[ prop ].splice( index, 1 );
                 } );
 
                 var group = scope.group.getObjectByName( field.value );
@@ -381,17 +343,24 @@ const Designer = function()
                 scope.current.set( "name", scope.group.name );
                 scope.current.set( "group", scope.group );
 
-                // TODO: delete from db
-                // close edit group and group segments tabs
-                //console.log( group, scope.group.children );
-                console.log( field, group, scope.current.group );
+                app.db.delete.data( params, callback );
+
+                function callback()
+                {
+                    field.form.container.remove.children();
+
+                    var tree = field.form.composite.get.field( field.row, field.col );
+                        tree.render();
+                        tree.update( scope.group.name );
+                        tree.state( scope.group.name );
+                }
             },
             opacity: ( name, obj ) =>
             {
                 obj.children.forEach( ( child ) => Process.group.opacity( name, child ) );
 
                 if ( obj.material && !obj.parent.userData.ui )
-                    obj.material.opacity = obj.parent.name == name ? 1 : scope.settings.opacity;
+                    obj.material.opacity = obj.parent.name == name ? 1 : scope.settings.appearance.opacity;
             },
             select: ( args ) =>
             {
@@ -434,13 +403,75 @@ const Designer = function()
                 }
             }
         },
+        helpers:
+        {
+            all: () =>
+            {
+                Process.helpers.crosshairs();
+                Process.helpers.cursor();
+                Process.helpers.grid();
+                Process.helpers.markers();
+                //Process.helpers.planes();
+            },
+            crosshairs: () =>
+            {
+                scope.crosshairs = {};
+                scope.crosshairs.group = new THREE.Group();
+                scope.crosshairs.group.name = "crosshairs";
+                scope.crosshairs.group.visible = Raycaster.enabled;
+                scope.crosshairs.group.userData.ui = true;
+                Object.assign( scope.crosshairs, new Helpers.Crosshairs() );
+                scope.group.add( scope.crosshairs.group );
+            },
+            cursor: () =>
+            {
+                scope.cursor = {};
+                scope.cursor.group = new THREE.Group();
+                scope.cursor.group.name = "cursor";
+                scope.cursor.group.visible = Raycaster.enabled;
+                scope.cursor.group.userData.ui = true;
+                Object.assign( scope.cursor, new Helpers.Marker( scope.cursor.group, scope.settings.appearance.cursor.size, scope.settings.appearance.cursor.color ) );
+                scope.group.add( scope.cursor.group );
+            },
+            grid: () =>
+            {
+                scope.grid = {};
+                scope.grid.group = new THREE.Group();
+                scope.grid.group.position.copy( scope.settings.grid.position );
+                scope.grid.group.name = "grid";
+                scope.grid.group.userData.ui = true;
+                Object.assign( scope.grid, new Helpers.Grid() );
+                scope.group.add( scope.grid.group );
+            },
+            markers: () =>
+            {
+                scope.markers = {};
+                scope.markers.group = new THREE.Group();
+                scope.markers.group.name = "markers";
+                scope.markers.group.userData.ui = true;
+                scope.group.add( scope.markers.group );
+            },
+            planes: () =>
+            {
+                scope.planes = {};
+                scope.planes.group = new THREE.Group();
+                scope.planes.group.name = "planes";
+                Object.assign( scope.planes, new Helpers.Planes( scope.planes.group ) );
+                scope.group.add( scope.planes.group );
+            },
+            visibility: ( name ) =>
+            {
+                scope[ name ].group.visible = !scope[ name ].group.visible;
+            }
+        },
         hooks: {},
         init: () =>
         {
             UI.init();
             Forms.project.select();
-            Raycaster.mode = "move";
-            Process.mode.set( { points: Raycaster.mode } );
+            // TODO: move down pipeline
+            //Raycaster.mode = "move";
+            //Process.mode.set( { points: Raycaster.mode } );
         },
         /*lines:
         {
@@ -647,6 +678,7 @@ const Designer = function()
                     let project = cell.field.value;
 
                     scope.current.set( "project", project );
+                    scope.current.set( "path", "projects" + delim + project + delim );
                     scope.current.set( "name", scope.group.name );
                     scope.current.set( "group", scope.group );
                     scope.current.set( "data", {} );
@@ -658,7 +690,7 @@ const Designer = function()
 
                         for ( let collection of collections )
                         {
-                            let source = new field.composite.Source( cell.field.source );
+                            let source = new field.form.composite.Source( cell.field.source );
                                 source.path = source.path + delim + project + delim + collection;
                             let response = await app.db.get( source );
 
@@ -678,17 +710,17 @@ const Designer = function()
                     {
                         scope.current.set( "response", data );
 
-                        Objects.plot.all();
-                        Forms.grid.settings();
-                        Forms.group.select();
+                        Process.settings.get();
+
 
                         // TODO: move further down the pipeline
-                        Raycaster.initialize();
-                        Listeners.initialize();
+                        //Objects.plot.all();
+                        //Raycaster.initialize();
+                        //Listeners.initialize();
                     } );
                 }
 
-                // TODO: define tools
+                // TODO: define tools to UI.init
                 //app.ui.toolbar.prepend( { icon: parseInt( "1F50E", 16 ), title: "Inspect", action: () => {} } );
                 //app.ui.toolbar.prepend( { icon: 9776, title: "Layer Visibility", action: () => {} } );*/
 
@@ -719,43 +751,36 @@ const Designer = function()
         },
         segments:
         {
-            add: ( args ) =>
+            add: ( submit ) =>
             {
-                // TODO: add segment
-                console.log( args );
-                /*var params = {};
-                    params.map = field.value;
-                    params.output = "realtime";
-                    params.value = [];
-
-                Process.segments.path( params );
-
-                // append the new segment
-                var data = scope.current.data.points.find( obj => obj.name == scope.current.name );
-                    data[ field.value ] = params.value;
-
-                // save the data
-                app.setters.db( params, () =>
+                var delim = "/";
+                var key = "new segment";
+                var object = submit.data.find( row => row[ key ] );
+                var value = object[ key ];
+                var params =
                 {
-                     // load the points form
-                    var detail =
-                    {
-                        field: field,
-                        data: params.value
-                    };
+                    map: value,
+                    output: "static",
+                    path: "projects" + delim + scope.current.project + delim + "groups" + delim + scope.current.name,
+                    value: []
+                };
+                var fields = submit.form.composite.get.schema();
+                var option = new submit.form.composite.Option( value, [] )
+                var labels = fields[ `segments.${ submit.row }` ];
+                    labels.options.push( option );
+                    labels.render();
+                var input = fields[ `new segment.${ submit.row }` ];
 
-                    Forms.points.edit( detail );
+                app.setters.db( params, callback );
 
-                    // refresh the segments list
-                    var refresh =
-                    {
-                        data: scope.current.data.points,
-                        key: field.data.key,
-                        value: scope.current.name
-                    };
+                function callback()
+                {
+                    input.update( "" );
 
-                    Process.hooks.points.segment.refresh( refresh );
-                } );*/
+                    submit.reset();
+
+                    Forms.points.edit( input.data );
+                }
             },
             change: ( event ) =>
             {
@@ -855,7 +880,7 @@ const Designer = function()
             },
             select: ( field ) =>
             {
-                console.log( field );
+                Forms.points.edit( field.data );
             },
             unlight: ( group, key ) =>
             {
@@ -865,35 +890,38 @@ const Designer = function()
                         if ( child.userData.segment == key )
                         {
                             child.material.color = new THREE.Color( child.parent.userData.color );
-                            child.material.opacity = child.userData.group == group.name ? 1 : scope.settings.opacity;
+                            child.material.opacity = child.userData.group == group.name ? 1 : scope.settings.appearance.opacity;
                         }
                 } );
+            }
+        },
+        settings:
+        {
+            get: async () =>
+            {
+                var params =
+                {
+                    key: "name",
+                    output: "static",
+                    path: "projects" + delim + scope.current.project + delim + "settings"
+                };
+
+                scope.settings = await Tools.query( params );
+
+                Process.helpers.all();
+                Forms.group.select();
             }
         }
     };
 
     const Forms =
     {
-        grid:
-        {
-            settings: () =>
-            {
-                /*var form = new DB.Forms();
-                    form.init( { parent: app.ui.widget, title: "Grid" } );
-                    form.add( { name: "position", label: "position", type: "vector", value: scope.grid.group.position.clone(), parent: "", required: true,
-                        data: { output: false },
-                        handlers: [ { event: "input", handler: Process.grid.translate } ] } );
-                    form.add( { name: "visibility", label: "visibility", type: "toggle", value: { on: true }, parent: "", required: true,
-                        data: { output: false, source: [ { on: true }, { off: false } ] },
-                        handlers: [ { event: "click", handler: Process.grid.toggle } ] } );*/
-            }
-        },
         project:
         {
             select: () =>
             {
                 var form = new DB.Forms( { parent: app.ui.modal, type: "horizontal" } );
-                    form.tab.add( { name: "Select Project", config: { numbers: false, headings: true } } );
+                    form.container.add( { name: "Select Project", config: { numbers: false, headings: true } } );
                     form.composite.init(
                     [
                         { name: "name", type: "combo", source: { key: "name", path: "projects", output: "static" } },
@@ -906,7 +934,7 @@ const Designer = function()
             edit: () =>
             {
                 var form = Process.hooks.group.form;
-                    form.tab.add( { name: "Edit Group", config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    form.container.add( { name: "Edit Group", child: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
                     form.composite.init(
                     [
                         {
@@ -915,15 +943,29 @@ const Designer = function()
                         },
                         {
                             break: true,
-                            name: "color", type: "color", value: scope.current.data.groups.find( obj => obj.name == scope.current.name ).color.replace( "#", "" ),
+                            name: "color", type: "color", value: scope.current.data.groups.find( obj => obj.name == scope.current.name ).color,
                             handlers: [ { event: "valid", handler: Process.group.color } ]
                         }
                     ] );
             },
             select: () =>
             {
-                var form = new DB.Forms( { parent: app.ui.widget, type: "horizontal" } );
-                    form.tab.add( { name: "Select Group", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                var settings = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Settings", type: "horizontal" } );
+                    settings.container.add( { name: "Grid", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    settings.composite.init(
+                    [
+                        { name: "position", type: "vector", value: scope.settings.grid.position },
+                        { break: true, name: "visible", type: "toggle", value: scope.settings.grid.visible, options: [ { text: "on", value: true }, { text: "off", value: false } ] },
+                        { break: true, name: "size", type: "vector", value: scope.settings.grid.size },
+                        { break: true, name: "snap", type: "number", value: scope.settings.grid.snap }
+
+                            //handlers: [ { event: "add", handler: Process.group.add }, { event: "click", handler: Process.group.select }, { event: "toggle", handler: Process.group.toggle } ],
+                            //source: { key: "name", data: scope.current.data.groups }
+
+                    ] );
+
+                var form = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Groups", type: "horizontal" } );
+                    form.container.add( { name: "Select Group", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
                     form.composite.init(
                     [
                         {
@@ -941,8 +983,12 @@ const Designer = function()
         },
         points:
         {
-            edit: ( detail ) =>
+            edit: ( set ) =>
             {
+                var option = Tools.unset( set );
+
+                // TODO: edit points / pop up vectors
+                console.log( set, option );
                 /*var key = detail.field.value;
                 var form = new DB.Forms();
                     form.init( { name: "points", parent: null, title: "Points" } );
@@ -968,11 +1014,21 @@ const Designer = function()
             {
                 var data = scope.current.data.points.find( obj => obj.name == scope.current.name ) || [];
                 var form = Process.hooks.group.form;
-                    form.tab.add( { name: "Group Segments", config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    form.container.add( { name: "Group Segments", child: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
                     form.composite.init(
                     [
                         {
-                            name: `${ scope.current.name } segments`,
+                            name: "group",
+                            type: "readonly",
+                            required: false,
+                            value: scope.current.name
+                        }
+                    ] );
+                    form.composite.init(
+                    [
+                        {
+                            break: true,
+                            name: "segments",
                             type: "label",
                             options: form.composite.from.object.to.options( { key: "name", data: data } ),
                             handlers: [ { event: "click", handler: Process.segments.select } ]
@@ -981,9 +1037,10 @@ const Designer = function()
                     form.composite.init(
                     [
                         { break: true, name: "new segment", type: "text" },
-                        { name: null, type: "submit", value: "Add", handlers: [ { event: "click", handler: Process.segments.add } ] }
+                        { name: null, type: "submit", value: "add", handlers: [ { event: "click", handler: Process.segments.add } ] }
                     ] );
 
+                // TODO: clear this shit out
                 //console.log( data, form.composite.from.object.to.options( { key: "name", data: data } ) );
 
                 //var options = segment.from.object.to.options( new segment.Source( { key: "name", data: data } ) );
@@ -1094,7 +1151,7 @@ const Designer = function()
         },
         Marker: function( group, size, color )
         {
-            size = size || scope.settings.marker;
+            size = size || scope.settings.appearance.marker;
 
             this.object = Objects.box.add( group, size, new THREE.Color( color ) );
             this.object.name = "marker" + this.object.id;
@@ -1271,7 +1328,7 @@ const Designer = function()
                 var geometry = new THREE.BufferGeometry().setFromPoints( args.points );
                 var material = new THREE.LineBasicMaterial( { color: args.color } );
                     material.transparent = true;
-                    material.opacity = scope.settings.opacity;
+                    material.opacity = scope.settings.appearance.opacity;
                 var lines = new THREE.Line( geometry, material );
                     lines.name = "line";
                     lines.userData.group = args.group.name;
@@ -1309,7 +1366,7 @@ const Designer = function()
         {
             add: ( args ) =>
             {
-                var marker = new Helpers.Marker( scope.markers.group, scope.settings.marker, args.color );
+                var marker = new Helpers.Marker( scope.markers.group, scope.settings.appearance.marker, args.color );
                     marker.object.position.copy( args.point );
                     marker.object.userData.group = args.group.name;
                     marker.object.userData.segment = args.segment;
@@ -1490,7 +1547,7 @@ const Designer = function()
         initialize: () =>
         {
             Raycaster.raycaster = new THREE.Raycaster();
-            Raycaster.snap = new THREE.Vector3( scope.settings.snap, scope.settings.snap, scope.settings.snap );
+            Raycaster.snap = new THREE.Vector3( scope.settings.grid.snap, scope.settings.grid.snap, scope.settings.grid.snap );
             Raycaster.update();
         },
         intersect: [],
@@ -1546,6 +1603,7 @@ const Designer = function()
         }
     };
 
+    // TODO: tidy up tools
     const Tools =
     {
         color: ( value ) => value.substring( value.length - 7 ),
@@ -1557,8 +1615,8 @@ const Designer = function()
         },
         isArray: ( obj ) => Object.prototype.toString.call( obj ) === '[object Array]',
         isObject: ( obj ) => ( typeof obj === 'object' ) && ( obj !== null ),
-        isNonValue: ( value ) => ( value == "" ) || ( value == null ) || ( value == undefined ),
-        mapToDoc: ( path, map ) =>
+        //isNonValue: ( value ) => ( value == "" ) || ( value == null ) || ( value == undefined ),
+        /*mapToDoc: ( path, map ) =>
         {
             app.db.get( new Params( { map: map, output: "static", path: path } ), ( response ) =>
             {
@@ -1573,6 +1631,23 @@ const Designer = function()
                 }
 
             } );
+        },*/
+        query: async ( params ) =>
+        {
+            var response = await app.getters.db( params );
+            var data = {};
+
+            if ( !params.key )
+                return response.data;
+            else
+                response.data.forEach( obj =>
+                {
+                    var key = obj[ params.key ];
+                    delete obj[ params.key ];
+                    data[ key ] = obj;
+                } );
+
+            return data;
         },
         traverse:
         {
@@ -1609,6 +1684,16 @@ const Designer = function()
 
                 return result;
             }
+        },
+        // Set() to value
+        unset: ( set ) =>
+        {
+            var value;
+
+            for ( let item of set )
+                value = item;
+
+            return value;
         }
     };
 

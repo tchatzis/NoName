@@ -144,7 +144,7 @@ const navdata = function()
         polygons:       new Default( [ "voxels" ], [ 0, 0, 20 ] ),
         pyramid:        new Default( [ "voxels" ], [ 0, 0, 20 ] ),
         // widgets
-        crud:           new Default( [ "widgets" ], [ 0, 0, 5 ] ),
+        //crud:           new Default( [ "widgets" ], [ 0, 0, 5 ] ),
         login:          new Default( [ "widgets" ], [ 0, 0, 5 ] ),
         widgets:        new Default( [ "widgets" ], [ 0, 0, 5 ] )
     };

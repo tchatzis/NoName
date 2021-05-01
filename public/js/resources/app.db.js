@@ -94,7 +94,6 @@ const DB = function()
                         return d;
                     } );
 
-
                 if ( response.data )
                     data = response.data();
             }
@@ -138,17 +137,17 @@ const DB = function()
 
     app[ scope ].delete =
     {
-        collection: async ( params, callback ) =>
+        /*collection: async ( params, callback ) =>
         {
             var data = await app[ scope ].get( params, callback );
 
             console.log( data );
-        },
+        },*/
 
-        doc: ( params, callback ) =>
+        data: ( params, callback ) =>
         {
             var ref = reference( params );
-                ref.delete().then( callback ).catch( app[ scope ].catch );;
+                ref.delete().then( callback ).catch( app[ scope ].catch );
         },
 
         field: ( params, callback ) =>

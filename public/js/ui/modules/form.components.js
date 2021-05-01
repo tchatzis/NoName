@@ -2,6 +2,11 @@ import { Utils } from './form.utils.js';
 
 export const Components =
 {
+    action: function()
+    {
+        //TODO: like submit, but it is tied to the value of the previous field
+    },
+
     click: function()
     {
         var field = this;
@@ -28,7 +33,6 @@ export const Components =
     color: function()
     {
         var field = this;
-        var hash = "#";
 
         this.color = document.createElement( "div" );
         this.color.classList.add( "formcolor" );
@@ -36,10 +40,10 @@ export const Components =
         this.element = document.createElement( "input" );
         this.element.setAttribute( "name", this.name );
         this.element.setAttribute( "type", "text" );
-        this.element.setAttribute( "maxlength", 6 );
-        this.element.setAttribute( "size", 3 );
+        this.element.setAttribute( "maxlength", 7 );
+        this.element.setAttribute( "size", 4 );
         this.element.setAttribute( "spellcheck", false );
-        this.element.setAttribute( "pattern", "[A-Fa-f0-9]{6}" );
+        this.element.setAttribute( "pattern", "^#([A-Fa-f0-9]{6})" );
         this.element.addEventListener( "input", function()
         {
             field.update( this.value );
@@ -56,10 +60,11 @@ export const Components =
 
         this.update = ( value ) =>
         {
+
             this.data[ this.row ][ this.name ] = value;
             this.value = value;
             this.element.value = value;
-            this.color.style.backgroundColor = `${ hash }${ value }`;
+            this.color.style.backgroundColor = value;
         };
 
         this.update( this.value );
@@ -183,11 +188,11 @@ export const Components =
     label: function()
     {
         var field = this;
+        var data = new Set();
 
         this.required = true;
         
         this.element = document.createElement( "div" );
-        this.element.innerHTML = null;
         this.element.setAttribute( "id", field.id );
         this.element.setAttribute( "name", this.name );
         
@@ -198,19 +203,65 @@ export const Components =
 
         this.handlers.forEach( type => handlers[ type.event ] = type.handler );
 
-        this.options.forEach( option =>
+        this.render = () =>
         {
-            var item = document.createElement( "div" );
-                item.innerText = option.text;
-                item.classList.add( "formlink" );
-                item.style.textAlign = "left";
-                item.addEventListener( "click", () => handlers.click( option ), false );
+            this.element.innerHTML = null;
 
-            if ( option.text == this.value )
-                item.classList.add( "formselected" );
+            this.options.forEach( option =>
+            {
+                var item = document.createElement( "div" );
+                    item.innerText = option.text;
+                    item.classList.add( "formlink" );
+                    item.style.textAlign = "left";
+                    item.addEventListener( "click", () =>
+                    {
+                        if ( !field.multiple )
+                            data = new Set();
 
-            this.element.appendChild( item );
-        } );
+                        this.data = data.add( option );
+                        this.update( option.text );
+                        this.state( item, option.text, option );
+
+                        if ( handlers.click )
+                            handlers.click( this );
+                    }, false );
+
+                this.element.appendChild( item );
+                this.state( item, this.value );
+            } );
+        };
+
+        this.state = ( item, value, option ) =>
+        {
+            if ( this.multiple )
+            {
+                let selected = item.classList.contains( "formselected" );
+
+                if ( selected )
+                    data.delete( option );
+
+                let predicate = data.has( option );
+
+                if ( predicate )
+                    item.classList.add( "formselected" );
+                else
+                    item.classList.remove( "formselected" );
+            }
+            else
+            {
+                Array.from( this.element.childNodes ).forEach( item => item.classList.remove( "formselected" ) );
+
+                if ( item.innerText == value )
+                    item.classList.add( "formselected" );
+            }
+        };
+
+        this.update = ( value ) =>
+        {
+            this.value = value;
+        };
+
+        this.render();
     },
 
     match: function()
@@ -364,28 +415,34 @@ export const Components =
     {
         var field = this;
 
+        this.required = false;
+
         this.element = document.createElement( "input" );
         this.element.setAttribute( "type", this.type );
         this.element.setAttribute( "value", this.value );
         this.element.setAttribute( "autocomplete", "off" );
-        this.element.addEventListener( "click", function()
+        this.element.addEventListener( "click", click, false );
+
+        this.parent.appendChild( this.element );
+
+        // handlers
+        var handlers = {};
+
+        this.handlers.forEach( type => handlers[ type.event ] = type.handler );
+
+        this.reset = () =>
+        {
+            this.element.removeAttribute( "disabled" );
+        };
+
+        function click()
         {
             var valid = field.Row.validate();
 
             if ( valid )
-            {
-                this.setAttribute( "disabled", valid );
-
-                field.set.handlers();
-                field.handlers.forEach( type =>
-                {
-                    if ( type.event == "click" )
-                        type.handler( field );
-                } );
-            }
-        }, false );
-
-        this.parent.appendChild( this.element );
+                if ( handlers.click )
+                    handlers.click( field );
+        }
     },
 
     toggle: function()

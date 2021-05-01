@@ -53,7 +53,7 @@ const Utils =
             var options = [];
 
             var response = await app.getters[ source.type ]( source );
-                response.data.forEach( item => options.push( new this.Option( item[ source.key ] ) ) );
+                response.data.forEach( item => options.push( new this.composite.Option( item[ source.key ] ) ) );
 
             return options;
         }.bind( this );
@@ -95,8 +95,7 @@ const Utils =
             break;
         }
 
-        // pass composite to field
-        args.composite = this;
+        args.form = this;
 
         return new Field( args );
     },
@@ -117,7 +116,7 @@ const Utils =
             // types
             click:      () => true,
             combo:      () => is.populated( field.value ),
-            color:      () => ( /[a-f0-9]{6}$/gi ).test( field.value ),
+            color:      () => ( /^#([A-Fa-f0-9]{6})/ ).test( field.value ),
             cycle:      () => is.populated( field.value ),
             date:       () => Object.prototype.toString.call( field.value ) === '[object Date]',
             datalist:   () => is.populated( field.value ),

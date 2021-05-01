@@ -1,36 +1,14 @@
-import { Composite } from './modules/form.composite.js';
 import { Container } from './modules/form.container.js';
 
 DB.Forms = function( args )
 {
+    args.form = this;
+
     this.container = new Container( args );
-    this.tabs = {};
 
-    this.tab =
-    {
-        add: ( args ) =>
-        {
-            var tab = new this.container.Tab( args );
+    this.fields = {};
 
-            args.parent = tab.content;
-
-            this.tabs[ args.name ] =
-            {
-                composite: new Composite( args ),
-                name: args.name,
-                elements: tab
-            };
-
-            this.composite = this.tabs[ args.name ].composite;
-        },
-
-        select: ( name ) =>
-        {
-            this.container.select( name );
-            this.composite = this.tabs[ name ].composite;
-        }
-    };
-
+    // TODO: clear this crap out
     /*function Form()
     {
         var div = document.createElement( "div" );

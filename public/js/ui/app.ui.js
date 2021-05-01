@@ -21,6 +21,12 @@ const UI = function()
                 cl: [ "hud" ],
                 parent: document.body
             },
+            debug:
+            {
+                el: document.createElement( "div" ),
+                cl: [ "debug" ],
+                parent: "hud"
+            },
             widget:
             {
                 el: document.createElement( "div" ),

@@ -127,13 +127,7 @@ input:disabled
 
 .formcollapsed
 {
-    height: 15px;
-    overflow-y: hidden;
-}
-
-.formcollapsed .formtitle
-{
-    cursor: zoom-in;
+    cursor: zoom-in !important;
 }
 
 .formcolor
@@ -158,6 +152,11 @@ input:disabled
 .formconfirm
 {
     color: green;
+}
+
+.form-container
+{
+    display: block;
 }
 
 .form-content
