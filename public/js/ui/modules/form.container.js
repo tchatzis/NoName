@@ -28,7 +28,9 @@ export function Container( args )
         this.element.appendChild( title );
     this.element.appendChild( container );
 
-    container.appendChild( element );
+    if ( scope.format !== "box" )
+        container.appendChild( element );
+
     container.appendChild( contents );
     
     if ( this.collapsed )
@@ -67,7 +69,9 @@ export function Container( args )
         data.names.push( { name: args.name, child: !!args.child || !data.elements.length, selected: !!args.selected || data.elements.length == 1 } );
         data.tabs[ args.name ] = tab;
 
-        element.appendChild( tab );
+        if ( scope.format !== "box" )
+            element.appendChild( tab );
+
         contents.appendChild( content );
 
         select();

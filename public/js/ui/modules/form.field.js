@@ -6,27 +6,10 @@ function Field( args )
     // defaults
     Object.assign( this, args );
 
-    this.handlers = this.handlers || [];
-
-    // hidden
-    if ( this.hidden === true )
-        this.element.parentNode.classList.add( "hide" );
-
-    this.set =
-    {
-        handlers: () =>
-        {
-            this.handlers.forEach( type =>
-            {
-                this.element.removeEventListener( type.event, type.handler, false )
-                this.element.addEventListener( type.event, type.handler, false );
-            } );
-        }
-    };
-
     // display
     switch( this.type )
     {
+        // TODO: implement
         /*
         checkbox
         datetime-local
@@ -43,7 +26,6 @@ function Field( args )
         case "date":
         case "email":
         case "hidden":
-        case "number":
         case "password":
         case "range":
         case "readonly":
@@ -59,6 +41,7 @@ function Field( args )
         case "cycle":
         case "label":
         case "match":
+        case "number":
         case "object":
         case "select":
         case "submit":
@@ -73,14 +56,44 @@ function Field( args )
         break;
     }
 
+    this.set =
+    {
+        attributes: () =>
+        {
+            if ( this.attributes )
+                for ( let attr in this.attributes )
+                    if ( this.attributes.hasOwnProperty( attr ) )
+                        this.element.setAttribute( attr, this.attributes[ attr ] );
+        },
+
+        handlers: () =>
+        {
+            this.handlers.forEach( type =>
+            {
+                this.element.removeEventListener( type.event, () => type.handler( this ), false )
+                this.element.addEventListener( type.event, () => type.handler( this ), false );
+            } );
+        },
+
+        visibility: () =>
+        {
+            if ( this.hidden === true )
+                this.element.parentNode.classList.add( "hide" );
+        }
+    };
+
     // events
     switch( this.type )
     {
+        // set handlers on other element
         case "click":
-        case "label":
-        case "match":
-        case "submit":
-        case "tree":
+            // TODO: test click
+            console.warn( this );
+        break;
+
+        case "match":   // because the target is the button and not the input
+        case "submit":  // because the row is validated before the event is fired
+        case "tree":    // because the target is the label and not the input
         break;
 
         default:
@@ -111,6 +124,9 @@ function Field( args )
     }
 
     this.validate = () => Utils.validate( this );
+
+    this.set.attributes();
+    this.set.visibility();
 }
 
 export { Field };

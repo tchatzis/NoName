@@ -11,23 +11,31 @@ export const Constructors = function()
             configurable: false
         } );
 
+        // defaults
         this.break = !!args.break;
-
+        this.col = args.col || 0;
+        this.handlers = args.handlers || [];
+        this.label = args.label || args.name;
         this.required = ( args.required !== false );
-
+        this.row = args.row || 0;
         this.type = args.type || "text";
 
-        // suggested
-        this.value = args.value || "";
-        this.handlers = args.handlers || [];
+        var value = args.value || "";
 
-        // optional
-        this.col = args.col || 0;
-        this.row = args.row || 0;
+        if ( this.type == "number" )
+            value = value ? Number( value ) : 0;
+
+        this.value = value;
 
         // only if defined
+        if ( args.attributes )
+            this.attributes = args.attributes;
+
         if ( args.destination )
             this.destination = args.destination;
+
+        if ( args.hasOwnProperty( "horizontal" ) )
+            this.horizontal = !!args.horizontal;
 
         if ( args.icon )
             this.icon = args.icon;
@@ -68,7 +76,7 @@ export const Constructors = function()
     this.Handler = function( args )
     {
         this.event = args.event;
-        this.handler = args.handler || console.warn( this.event, "is not defined" );
+        this.handler = args.handler || console.warn( this.event, "event is not defined" );
     };
 
     this.Option = function( text, value )

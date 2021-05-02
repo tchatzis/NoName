@@ -176,8 +176,7 @@ const Designer = function()
             add: ( args ) =>
             {
                 var name = args.value;
-                var delim = "/";
-                var path = "projects" + delim + scope.current.project + delim + "groups" + delim + name;
+                var path = scope.current.path + "groups" + delim + name;
                 var field = args.field;
                 var source = field.source;
                 var data =
@@ -220,8 +219,7 @@ const Designer = function()
             },
             breadcrumbs: ( map, args, callback ) =>
             {
-                var delim = "/";
-                var path = "projects" + delim + scope.current.project + delim + "groups";
+                var path = scope.current.path + "groups";
 
                 // traverse breadcrumbs
                 args.breadcrumbs.forEach( name =>
@@ -240,12 +238,11 @@ const Designer = function()
             color: ( event ) =>
             {
                 var field = event.detail;
-                var delim = "/";
                 var params =
                 {
                     map: "color",
                     output: "static",
-                    path: "projects" + delim + scope.current.project + delim + "groups" + delim + scope.current.name,
+                    path: scope.current.path + "groups" + delim + scope.current.name,
                     value: field.value
                 };
 
@@ -314,10 +311,9 @@ const Designer = function()
             },
             delete: ( field ) =>
             {
-                var delim = "/";
                 var params =
                 {
-                    path: "projects" + delim + scope.current.project + delim + "groups" + delim + field.value
+                    path: scope.current.path + "groups" + delim + field.value
                 };
 
                 [ "groups", "points" ].forEach( prop =>
@@ -418,7 +414,7 @@ const Designer = function()
                 scope.crosshairs = {};
                 scope.crosshairs.group = new THREE.Group();
                 scope.crosshairs.group.name = "crosshairs";
-                scope.crosshairs.group.visible = Raycaster.enabled;
+                scope.crosshairs.group.visible = false;
                 scope.crosshairs.group.userData.ui = true;
                 Object.assign( scope.crosshairs, new Helpers.Crosshairs() );
                 scope.group.add( scope.crosshairs.group );
@@ -428,7 +424,7 @@ const Designer = function()
                 scope.cursor = {};
                 scope.cursor.group = new THREE.Group();
                 scope.cursor.group.name = "cursor";
-                scope.cursor.group.visible = Raycaster.enabled;
+                scope.cursor.group.visible = false;
                 scope.cursor.group.userData.ui = true;
                 Object.assign( scope.cursor, new Helpers.Marker( scope.cursor.group, scope.settings.appearance.cursor.size, scope.settings.appearance.cursor.color ) );
                 scope.group.add( scope.cursor.group );
@@ -440,6 +436,7 @@ const Designer = function()
                 scope.grid.group.position.copy( scope.settings.grid.position );
                 scope.grid.group.name = "grid";
                 scope.grid.group.userData.ui = true;
+                scope.grid.group.visible = scope.settings.grid.visible;
                 Object.assign( scope.grid, new Helpers.Grid() );
                 scope.group.add( scope.grid.group );
             },
@@ -459,9 +456,9 @@ const Designer = function()
                 Object.assign( scope.planes, new Helpers.Planes( scope.planes.group ) );
                 scope.group.add( scope.planes.group );
             },
-            visibility: ( name ) =>
+            visibility: ( name, value ) =>
             {
-                scope[ name ].group.visible = !scope[ name ].group.visible;
+                scope[ name ].group.visible = value;
             }
         },
         hooks: {},
@@ -469,32 +466,38 @@ const Designer = function()
         {
             UI.init();
             Forms.project.select();
-            // TODO: move down pipeline
-            //Raycaster.mode = "move";
-            //Process.mode.set( { points: Raycaster.mode } );
         },
-        /*lines:
-        {
-            close: () => Objects.lines.close()
-        },*/
         mode:
         {
+            init: () =>
+            {
+                Process.helpers.all();
+                Forms.group.select();
+                Raycaster.initialize();
+                Listeners.initialize();
+                Objects.plot.all();
+            },
             reset: ( key ) => delete Process.mode.status[ key ],
-            set: ( status ) => Object.assign( Process.mode.status, status ),
+            set: ( field ) =>
+            {
+                Object.assign( Process.mode.status, { [ field.name ]: field.value } );
+                Raycaster.mode = field.value;
+            },
             status: {}
         },
         points:
         {
-            add: ( field ) =>
+            add: ( e ) =>
             {
-                var data = scope.current.data.points.find( obj => obj.name == scope.current.name );
+                console.log( e );
+                /*var data = scope.current.data.points.find( obj => obj.name == scope.current.name );
                 var params = {};
                     params.map = field.value;
                     params.output = "realtime";
                     params.value = data[ field.value ];
 
                 Process.segments.path( params );
-                Process.points.save( params );
+                Process.points.save( params );*/
             },
             change: ( field ) =>
             {
@@ -599,8 +602,22 @@ const Designer = function()
             },
             select: () =>
             {
-                var name = Raycaster.selected.group;
+                // this is a Listener
+                // TODO: implement mode.select
+                if ( Raycaster.selected )
+                {
+                    let name = Raycaster.selected.group;
+
+                    console.warn( "not implemented", Process.mode.status, Raycaster.selected );
+
+
+
+
+
+                }
+                /*
                 var data = scope.current.data.points.find( object => object.name == name );
+
                 var detail =
                 {
                     data: data[ Raycaster.selected.segment ],
@@ -627,7 +644,7 @@ const Designer = function()
                         Process.hooks.points.popup.destroy();
 
                     Forms.points.edit( detail );
-                }
+                }*/
             },
             set: () =>
             {
@@ -668,7 +685,6 @@ const Designer = function()
                 UI.cancel( app.ui.modal );
                 UI.reset( app.ui.widget );
 
-                var delim = "/";
                 var key = "name";
                 var cell = field.Row.cols.find( col => col.field[ key ] == key );
                 var collections = [ "groups", "points" ];
@@ -711,12 +727,6 @@ const Designer = function()
                         scope.current.set( "response", data );
 
                         Process.settings.get();
-
-
-                        // TODO: move further down the pipeline
-                        //Objects.plot.all();
-                        //Raycaster.initialize();
-                        //Listeners.initialize();
                     } );
                 }
 
@@ -735,7 +745,12 @@ const Designer = function()
         },
         raycaster:
         {
-            move: () => Process.points.move(),
+            add: () =>
+            {
+                Process.helpers.visibility( "crosshairs", true );
+                Process.helpers.visibility( "cursor", true );
+                Process.helpers.visibility( "grid", true );
+            },
             select: ( args ) =>
             {
                 var group = scope.group.getObjectByName( args.group );
@@ -753,7 +768,6 @@ const Designer = function()
         {
             add: ( submit ) =>
             {
-                var delim = "/";
                 var key = "new segment";
                 var object = submit.data.find( row => row[ key ] );
                 var value = object[ key ];
@@ -761,7 +775,7 @@ const Designer = function()
                 {
                     map: value,
                     output: "static",
-                    path: "projects" + delim + scope.current.project + delim + "groups" + delim + scope.current.name,
+                    path: scope.current.path + "groups" + delim + scope.current.name,
                     value: []
                 };
                 var fields = submit.form.composite.get.schema();
@@ -824,23 +838,16 @@ const Designer = function()
             },
             highlight: ( group, key ) =>
             {
-                group.children.forEach( ( child ) =>
-                {
-                    if ( child.material )
-                        if ( child.userData.segment == key )
-                        {
-                            child.material.color = new THREE.Color();
-                            child.material.opacity = 1;
-                        }
-                } );
-            },
-            path: ( params ) =>
-            {
-                params.path = [ "projects" ];
-                params.path.push( scope.current.project );
-                params.path.push( "points" );
-                params.path.push( scope.current.name );
-                params.path = params.path.join( "/" );
+                if ( group.visible )
+                    group.children.forEach( ( child ) =>
+                    {
+                        if ( child.material )
+                            if ( child.userData.segment == key )
+                            {
+                                child.material.color = new THREE.Color();
+                                child.material.opacity = 1;
+                            }
+                    } );
             },
             reset: ( field, key ) =>
             {
@@ -880,7 +887,7 @@ const Designer = function()
             },
             select: ( field ) =>
             {
-                Forms.points.edit( field.data );
+                Forms.points.edit( field );
             },
             unlight: ( group, key ) =>
             {
@@ -890,26 +897,107 @@ const Designer = function()
                         if ( child.userData.segment == key )
                         {
                             child.material.color = new THREE.Color( child.parent.userData.color );
-                            child.material.opacity = child.userData.group == group.name ? 1 : scope.settings.appearance.opacity;
+                            child.material.opacity = child.userData.group == scope.current.name ? 1 : scope.settings.appearance.opacity;
                         }
                 } );
             }
         },
         settings:
         {
+            appearance:
+            {
+                cursor: ( field ) =>
+                {
+                    var value = field.type == "number" ? Number( field.value ) : field.value;
+
+                    var params =
+                    {
+                        map: `cursor.${ field.name }`,
+                        key: "name",
+                        output: "static",
+                        path: scope.current.path + "settings" + delim + "appearance",
+                        value: value
+                    };
+
+                    switch( field.name )
+                    {
+                        case "color":
+                            scope.cursor.object.material.color = new THREE.Color( value );
+                        break;
+
+                        case "size":
+                            scope.cursor.object.scale.set( value, value, value );
+                        break;
+                    }
+
+                    app.setters.db( params );
+                },
+                marker: ( field ) =>
+                {
+                    console.warn( field.label, "not implemented" );
+                    Process.settings.save( field, "appearance" );
+                },
+                opacity: ( field ) =>
+                {
+                    console.warn( field.label, "not implemented" );
+                    Process.settings.save( field, "appearance" );
+                }
+            },
             get: async () =>
             {
                 var params =
                 {
                     key: "name",
                     output: "static",
-                    path: "projects" + delim + scope.current.project + delim + "settings"
+                    path: scope.current.path + "settings"
                 };
 
                 scope.settings = await Tools.query( params );
 
-                Process.helpers.all();
-                Forms.group.select();
+                Process.mode.init();
+            },
+            grid:
+            {
+                position: ( field ) =>
+                {
+                    scope.grid.group.position.copy( scope.settings.grid.position );
+                    Process.settings.save( field, "grid" );
+                },
+                size: ( field ) =>
+                {
+                    Objects.remove( scope.grid.group );
+
+                    delete scope.grid;
+
+                    Process.helpers.grid();
+                    Process.settings.save( field, "grid" );
+                },
+                snap: ( field ) =>
+                {
+                    field.element.step = scope.settings.grid.snap;
+                    Raycaster.snap = new THREE.Vector3( field.value, field.value, field.value );
+                    Process.settings.save( field, "grid" )
+                },
+                visible: ( field ) =>
+                {
+                    Process.helpers.visibility( "grid", field.value );
+                    Process.settings.save( field, "grid" );
+                }
+            },
+            save: ( field, name ) =>
+            {
+                var value = field.type == "number" ? Number( field.value ) : field.value;
+
+                var params =
+                {
+                    map: field.name,
+                    key: "name",
+                    output: "static",
+                    path: scope.current.path + "settings" + delim + name,
+                    value: value
+                };
+
+                app.setters.db( params );
             }
         }
     };
@@ -920,7 +1008,7 @@ const Designer = function()
         {
             select: () =>
             {
-                var form = new DB.Forms( { parent: app.ui.modal, type: "horizontal" } );
+                var form = new DB.Forms( { title: "Select Project", parent: app.ui.modal, format: "box" } );
                     form.container.add( { name: "Select Project", config: { numbers: false, headings: true } } );
                     form.composite.init(
                     [
@@ -950,21 +1038,56 @@ const Designer = function()
             },
             select: () =>
             {
-                var settings = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Settings", type: "horizontal" } );
+                var mode = new DB.Forms( { parent: app.ui.widget, title: "Mode", format: "box" } );
+                    mode.container.add( { name: "Mode", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    mode.composite.init(
+                    [
+                        { name: "points", type: "label", value: "", horizontal: true,
+                            options: [ { text: "view" }, { text: "select" }, { text: "add" } ],
+                            handlers: [ { event: "click", handler: Process.mode.set } ]
+                        }
+                    ] );
+
+                var settings = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Settings", format: "tabs" } );
                     settings.container.add( { name: "Grid", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
                     settings.composite.init(
                     [
-                        { name: "position", type: "vector", value: scope.settings.grid.position },
-                        { break: true, name: "visible", type: "toggle", value: scope.settings.grid.visible, options: [ { text: "on", value: true }, { text: "off", value: false } ] },
-                        { break: true, name: "size", type: "vector", value: scope.settings.grid.size },
-                        { break: true, name: "snap", type: "number", value: scope.settings.grid.snap }
-
-                            //handlers: [ { event: "add", handler: Process.group.add }, { event: "click", handler: Process.group.select }, { event: "toggle", handler: Process.group.toggle } ],
-                            //source: { key: "name", data: scope.current.data.groups }
-
+                        { name: "position", type: "vector", value: scope.settings.grid.position,
+                            handlers: [ { event: "click", handler: Process.settings.grid.position } ]
+                        },
+                        { break: true, name: "visible", type: "toggle", value: scope.settings.grid.visible, 
+                            options: [ { text: "on", value: true }, { text: "off", value: false } ],
+                            handlers: [ { event: "click", handler: Process.settings.grid.visible } ]
+                        },
+                        { break: true, name: "size", type: "vector", value: scope.settings.grid.size,
+                            handlers: [ { event: "input", handler: Process.settings.grid.size } ]
+                        },
+                        { break: true, name: "snap", type: "number", value: scope.settings.grid.snap,
+                            attributes: { step: scope.settings.grid.snap },
+                            handlers: [ { event: "input", handler: Process.settings.grid.snap } ]
+                        }
+                    ] );
+                    settings.container.add( { name: "Appearance", config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    settings.composite.init(
+                    [
+                        { label: "cursor color", name: "color", type: "color", value: scope.settings.appearance.cursor.color,
+                            handlers: [ { event: "valid", handler: Process.settings.appearance.cursor } ]
+                        },
+                        { label: "cursor size", name: "size", type: "number", value: scope.settings.appearance.cursor.size,
+                            attributes: { step: 0.1, min: 0.1, max: 1 },
+                            handlers: [ { event: "click", handler: Process.settings.appearance.cursor } ]
+                        },
+                        { break: true, label: "marker size", name: "marker", type: "number", value: scope.settings.appearance.marker,
+                            attributes: { step: 0.05, min: 0.05, max: 1 },
+                            handlers: [ { event: "input", handler: Process.settings.appearance.marker } ]
+                        },
+                        { break: true, label: "line opacity", name: "opacity", type: "number", value: scope.settings.appearance.opacity,
+                            attributes: { step: 0.05, min: 0, max: 1 },
+                            handlers: [ { event: "input", handler: Process.settings.appearance.opacity } ]
+                        }
                     ] );
 
-                var form = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Groups", type: "horizontal" } );
+                var form = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Groups", format: "tabs" } );
                     form.container.add( { name: "Select Group", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
                     form.composite.init(
                     [
@@ -983,12 +1106,12 @@ const Designer = function()
         },
         points:
         {
-            edit: ( set ) =>
+            edit: ( field ) =>
             {
-                var option = Tools.unset( set );
+                var option = Tools.unset( field.data );
 
                 // TODO: edit points / pop up vectors
-                console.log( set, option );
+                console.log( field, option );
                 /*var key = detail.field.value;
                 var form = new DB.Forms();
                     form.init( { name: "points", parent: null, title: "Points" } );
@@ -1246,10 +1369,11 @@ const Designer = function()
         {
             add: ( group, size, color ) =>
             {
-                var geometry = new THREE.BoxBufferGeometry( size, size, size );
+                var geometry = new THREE.BoxBufferGeometry();
                 var material = new THREE.MeshBasicMaterial( { color: color, wireframe: false } );
                 var mesh = new THREE.Mesh( geometry, material );
                     mesh.userData = group.userData;
+                    mesh.scale.set( size, size, size )
 
                 group.add( mesh );
     
@@ -1390,14 +1514,14 @@ const Designer = function()
                         Objects.dispose( scope.markers.group, child );
                 } );
             },
-            toggle: ( args ) =>
+            /*toggle: ( args ) =>
             {
                 scope.markers.group.children.forEach( child =>
                 {
                     if ( child.userData.group == args.group.name )
                         child.visible = !child.visible;
                 } );
-            },
+            },*/
             unlight: ( args ) =>
             {
                 args.group = args.group || scope.current.group;
@@ -1476,6 +1600,7 @@ const Designer = function()
                     Objects.lines.add( args );
             }
         },
+        remove: ( obj ) => obj.parent.remove( obj )
         /*points:
         {
             add: ( points, point ) => points.push( point ),
@@ -1547,6 +1672,7 @@ const Designer = function()
         initialize: () =>
         {
             Raycaster.raycaster = new THREE.Raycaster();
+            Raycaster.selected = null;
             Raycaster.snap = new THREE.Vector3( scope.settings.grid.snap, scope.settings.grid.snap, scope.settings.grid.snap );
             Raycaster.update();
         },
@@ -1559,24 +1685,18 @@ const Designer = function()
                 case "add":
                     Raycaster.intersects = [ scope.grid.object ];
                     Raycaster.action = ( args ) => Process.raycaster[ Raycaster.mode ]( args );
-                    Raycaster.position = ( point ) =>
-                    {
-                        var position = Tools.snap( point, Raycaster.snap.clone() );
-
-                        return new THREE.Vector3().fromArray( position );
-                    };
+                    Raycaster.position = ( point ) => new THREE.Vector3().fromArray( Tools.snap( point, Raycaster.snap ) );
                 break;
-
-                case "move":
-                    Raycaster.action = ( args ) => Process.raycaster[ Raycaster.mode ]( args );
-                    Raycaster.position = ( point ) => point;
-                break
 
                 case "select":
                     Raycaster.intersects = Objects.lines.all( scope.group, [] );
                     Raycaster.action = ( args ) => Process.raycaster[ Raycaster.mode ]( args );
-                    Raycaster.position = ( point ) => point;
+                    Raycaster.position = ( point ) => new THREE.Vector3().fromArray( Tools.snap( point, new THREE.Vector3() ) );
                 break;
+
+                case "view":
+                    Raycaster.intersects = [];
+                break
             }
 
             Raycaster.intersect = Raycaster.raycaster.intersectObjects( Raycaster.intersects );
@@ -1603,35 +1723,19 @@ const Designer = function()
         }
     };
 
-    // TODO: tidy up tools
     const Tools =
     {
         color: ( value ) => value.substring( value.length - 7 ),
         snap: ( point, spacing ) =>
         {
-            spacing = spacing || scope.grid.spacing;
-
-            return axes.map( axis => Math.round( point[ axis ] / spacing[ axis ] ) * spacing[ axis ] );
+            if ( scope.settings.grid.snap )
+                return axes.map( axis => Math.round( point[ axis ] / spacing[ axis ] ) * spacing[ axis ] );
+            else
+                return axes.map( axis => point[ axis ] );
         },
         isArray: ( obj ) => Object.prototype.toString.call( obj ) === '[object Array]',
         isObject: ( obj ) => ( typeof obj === 'object' ) && ( obj !== null ),
-        //isNonValue: ( value ) => ( value == "" ) || ( value == null ) || ( value == undefined ),
-        /*mapToDoc: ( path, map ) =>
-        {
-            app.db.get( new Params( { map: map, output: "static", path: path } ), ( response ) =>
-            {
-                var data = response.data;
-
-                path.push( map );
-
-                for ( let key in data )
-                {
-                    if ( data.hasOwnProperty( key ) )
-                        app.db.addDoc( new Params( { key: key, output: "static", path: path, value: data[ key ] } ) );
-                }
-
-            } );
-        },*/
+        isValue: ( value ) => !( ( value == "" ) || ( value == null ) || ( typeof value == "undefined" ) ),
         query: async ( params ) =>
         {
             var response = await app.getters.db( params );
@@ -1685,9 +1789,9 @@ const Designer = function()
                 return result;
             }
         },
-        // Set() to value
         unset: ( set ) =>
         {
+            // Set() to value
             var value;
 
             for ( let item of set )

@@ -109,7 +109,7 @@ const Utils =
             defined:    ( value ) => typeof value !== "undefined",
             matched:    ( value1, value2 ) => value1 == value2,
             notnull:    ( value ) => value !== null,
-            number:     ( value ) => typeof value == "number" && !isNaN( value ),
+            numeric:    ( value ) => typeof Number( value ) == "number" && !isNaN( Number( value ) ),
             populated:  ( value ) => value !== "" && is.notnull( value ) && is.defined( value ),
             string:     ( value ) => typeof value == "string",
 
@@ -123,14 +123,15 @@ const Utils =
             hidden:     () => is.populated( field.value ),
             list:       () => is.populated( field.value ),
             match:      () => is.matched( field.value, field.element.value ),
+            number:     () => is.numeric( field.value ),
             object:     () => Object.keys( field.value ).every( key => is.populated( field.value[ key ] ) ),
-            range:      () => is.number( Number( field.value ) ),
+            range:      () => is.numeric( Number( field.value ) ),
             readonly:   () => is.populated( field.value ),
             select:     () => is.populated( field.value ),
             text:       () => is.string( field.value ) && is.populated( field.value ),
             toggle:     () => is.boolean( field.value ),
             tree:       () => is.text( field.value ),
-            vector:     () => Object.keys( field.value ).every( axis => is.number( field.value[ axis ] ) )
+            vector:     () => Object.keys( field.value ).every( axis => is.numeric( field.value[ axis ] ) )
         };
 
         if ( !is[ field.type ] )
@@ -144,8 +145,6 @@ const Utils =
             field.element.focus();
 
             element.classList.add( "forminvalid" );
-
-            //scope.message.add( field.name, `${ field.name } is not valid`, error, 10 );
         }
         else
         {
@@ -154,7 +153,6 @@ const Utils =
             field.element.dispatchEvent( event );
 
             element.classList.remove( "forminvalid" );
-            //scope.message.cancel();
         }
 
         return valid;

@@ -81,6 +81,7 @@ export function Composite( args )
         var render = ( data ) =>
         {
             var count = 0;
+            var headings;
 
             this.fields = data.map( d =>
             {
@@ -104,16 +105,26 @@ export function Composite( args )
                 {
                     labels[ d.field.col ] = Utils.create( "table-heading" );
 
-                    let headings = Utils.create( "table-row" );
-                        headings.appendChild( labels[ d.field.col ] );
+                    headings = Utils.create( "table-row" );
+                    headings.appendChild( labels[ d.field.col ] );
 
                     if ( composite.config.numbers !== false )
                         headings.appendChild( Utils.create( "table-number" ) );
 
                     let parent = this.element.parentNode;
                         parent.insertBefore( headings, this.element );
+                    
+                    composite.label( d.field.col, d.field.label );
+                }
+                else
+                {
+                    if ( d.field.label )
+                    {
+                        labels[ d.field.col ] = Utils.create( "table-heading" );
+                        headings.appendChild( labels[ d.field.col ] );
 
-                    composite.label( d.field.col, d.field.name );
+                        composite.label( d.field.col, d.field.label );
+                    }
                 }
 
                 count++;

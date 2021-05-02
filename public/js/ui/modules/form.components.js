@@ -1,5 +1,14 @@
 import { Utils } from './form.utils.js';
 
+function handles()
+{
+    var handlers = {};
+
+    this.handlers.forEach( type => handlers[ type.event ] = type.handler );
+
+    return handlers;
+}
+
 export const Components =
 {
     action: function()
@@ -18,7 +27,7 @@ export const Components =
         this.element.classList.add( "formbutton" );
         this.element.addEventListener( "click", () => this.action( this ), false );
 
-        this.handlers.forEach( type => this.element.addEventListener( type.event, () => type.handler( field ), false ) );
+        //this.handlers.forEach( type => this.element.addEventListener( type.event, () => type.handler( field ), false ) );
 
         this.parent.appendChild( this.element );
 
@@ -195,13 +204,11 @@ export const Components =
         this.element = document.createElement( "div" );
         this.element.setAttribute( "id", field.id );
         this.element.setAttribute( "name", this.name );
+
+        if ( this.horizontal )
+            this.element.classList.add( "formsxs" );
         
         this.parent.appendChild( this.element );
-        
-        // handlers
-        var handlers = {};
-
-        this.handlers.forEach( type => handlers[ type.event ] = type.handler );
 
         this.render = () =>
         {
@@ -216,23 +223,25 @@ export const Components =
                     item.addEventListener( "click", () =>
                     {
                         if ( !field.multiple )
+                        {
                             data = new Set();
+                            reset();
+                        }
 
                         this.data = data.add( option );
                         this.update( option.text );
                         this.state( item, option.text, option );
-
-                        if ( handlers.click )
-                            handlers.click( this );
                     }, false );
 
                 this.element.appendChild( item );
-                this.state( item, this.value );
+                this.state( item, this.value, option );
             } );
         };
 
         this.state = ( item, value, option ) =>
         {
+            var predicate;
+
             if ( this.multiple )
             {
                 let selected = item.classList.contains( "formselected" );
@@ -240,20 +249,13 @@ export const Components =
                 if ( selected )
                     data.delete( option );
 
-                let predicate = data.has( option );
-
-                if ( predicate )
-                    item.classList.add( "formselected" );
-                else
-                    item.classList.remove( "formselected" );
+                predicate = data.has( option );
             }
             else
-            {
-                Array.from( this.element.childNodes ).forEach( item => item.classList.remove( "formselected" ) );
+                predicate = item.innerText == value;
 
-                if ( item.innerText == value )
-                    item.classList.add( "formselected" );
-            }
+            if ( predicate )
+                item.classList.add( "formselected" );
         };
 
         this.update = ( value ) =>
@@ -262,6 +264,11 @@ export const Components =
         };
 
         this.render();
+
+        function reset()
+        {
+            Array.from( field.element.children ).forEach( item => item.classList.remove( "formselected" ) );
+        }
     },
 
     match: function()
@@ -288,9 +295,7 @@ export const Components =
         div.appendChild( this.element );
 
         // handlers
-        var handlers = {};
-
-        this.handlers.forEach( type => handlers[ type.event ] = type.handler );
+        var handlers = handles.call( this );
 
         var button = document.createElement( "div" );
             button.classList.add( "formbutton" );
@@ -311,6 +316,28 @@ export const Components =
         }
 
         match();
+    },
+
+    number: function()
+    {
+        var field = this;
+
+        this.element = document.createElement( "input" );
+        this.element.setAttribute( "name", this.name );
+        this.element.setAttribute( "placeholder", this.name );
+        this.element.setAttribute( "type", this.type );
+        this.element.setAttribute( "value", Number( this.value ) );
+        this.element.setAttribute( "autocomplete", "off" );
+        if ( this.type == "readonly" )
+            this.element.setAttribute( "readonly", "" );
+        this.element.addEventListener( "input", function()
+        {
+            field.update( Number( this.value ) );
+
+            Utils.validate( field );
+        }, false );
+
+        this.parent.appendChild( this.element );
     },
 
     object: function()
@@ -426,9 +453,7 @@ export const Components =
         this.parent.appendChild( this.element );
 
         // handlers
-        var handlers = {};
-
-        this.handlers.forEach( type => handlers[ type.event ] = type.handler );
+        var handlers = handles.call( this );
 
         this.reset = () =>
         {
@@ -499,9 +524,7 @@ export const Components =
         this.parent.appendChild( this.element );
 
         // handlers
-        var handlers = {};
-
-        this.handlers.forEach( type => handlers[ type.event ] = type.handler );
+        var handlers = handles.call( this );
 
         // items
         var items = this.parent.querySelector( `[ data-name = "${ this.name }" ]` ) || document.createElement( "div" );
@@ -558,8 +581,8 @@ export const Components =
                     }
                 } );
 
-            if ( handlers.toggle )
-                handlers.toggle( args );
+            //if ( handlers.toggle )
+            //    handlers.toggle( args );
         }
 
         // public methods

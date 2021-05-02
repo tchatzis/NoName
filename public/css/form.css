@@ -54,6 +54,7 @@ input[ type=number ]
     max-width: 45px;
     height: 21px;
     color: lime;
+    margin-right: 8px;
 }
 
 input[ type=button ]
@@ -343,8 +344,10 @@ input:disabled
 
 .formtitle
 {
-    color: #666;
-    font-size: 1.5em;
+    color: silver;
+    font-size: 1.2em;
     text-transform: capitalize;
     cursor: zoom-out;
+    margin-bottom: 2px;
+    border-bottom: 1px dotted #333;
 }
