@@ -39,12 +39,12 @@ const UI = function()
                 cl: [ "container" ],
                 parent: document.body
             },
-            dropdown:
+            /*dropdown:
             {
                 el: document.createElement( "div" ),
                 cl: [ "dropdown" ],
                 parent: document.body
-            },
+            },*/
             raycasting:
             {
                 el: document.createElement( "div" ),

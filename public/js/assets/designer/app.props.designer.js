@@ -21,6 +21,7 @@ const Designer = function()
         Process.init();
     };
 
+    // TODO: add dimensions
     /*const Data =
     {
         Entity: function( args )
@@ -98,7 +99,7 @@ const Designer = function()
                 this.name = name;
                 this.group = group || new THREE.Group();
                 this.group.name = name;
-                this.group.userData.group = name;
+                this.group.userData.name = name;
 
                 parent.add( this.group );
             }
@@ -140,6 +141,7 @@ const Designer = function()
         } );
     }
 
+    // TODO: consider implementation
     /*function Params( args )
     {
         this.key    = args.key || null;
@@ -148,6 +150,29 @@ const Designer = function()
         this.path   = Array.isArray( args.path ) ? args.path.join( "/" ) : args.path;
         this.value  = args.value || null;
     }*/
+    
+    const Handles =
+    {
+        forms: {},
+        get:
+        {
+            forms: ( path ) =>
+            {
+                var r = Handles.forms;
+                var p = path.split( delim );
+
+                    if ( p.length > 2 )
+                    {
+                        p.splice( 2, 0, "fields" );
+                        p.push( "field" );
+                    }
+
+                    p.forEach( prop => r = r[ prop ] );
+
+                return r;
+            }
+        }
+    };
 
     const Process =
     {
@@ -164,9 +189,9 @@ const Designer = function()
                 scope.grid.group.position[ axis ] = value;
 
                 // update the add field in the array
-                if ( Process.hooks.points && Process.hooks.points.array )
+                if ( Handles.forms.points && Handles.forms.points.array )
                 {
-                    let field = Process.hooks.points.array.fields.find( field => field.label == "add" );
+                    let field = Handles.forms.points.array.fields.find( field => field.label == "add" );
                         field.update( scope.grid.group.position.clone() );
                 }
             }
@@ -290,7 +315,7 @@ const Designer = function()
                         {
                             var group = scope.group.getObjectByName( child.name, true ) || new THREE.Group();
                                 group.name = child.name;
-                                group.userData.group = child.name;
+                                group.userData.name = child.name;
                                 group.userData.color = child.color;
                                 group.visible = child.visible;
 
@@ -378,6 +403,18 @@ const Designer = function()
                     args.data[ map ] = args.value;
                 }
             },
+            // TODO: consider
+            /*unlight: ( group ) =>
+            {
+                group.children.forEach( ( child ) =>
+                {
+                    if ( child.material )
+                    {
+                        child.material.color = new THREE.Color( child.parent.userData.color );
+                        child.material.opacity = child.userData.name == scope.current.name ? 1 : scope.settings.appearance.opacity;
+                    }
+                } );
+            },*/
             visibility: ( args ) =>
             {
                 var map = "visible";
@@ -461,18 +498,62 @@ const Designer = function()
                 scope[ name ].group.visible = value;
             }
         },
-        hooks: {},
         init: () =>
         {
             UI.init();
             Forms.project.select();
         },
+        listeners:
+        {
+            add: () => {},
+            edit: () =>
+            {
+                var segments = Handles.get.forms( "group/groups/Group Segments/segments" );
+                    segments.update( Raycaster.current.segment );
+
+                Process.segments.select( segments );
+            },
+            select: async () =>
+            {
+                if ( Raycaster.selected )
+                {
+                    Process.mode.set( { name: "points", value: "edit" } );
+
+                    let name = Raycaster.selected.name;
+
+                    scope.current.set( "name", name );
+                    scope.current.set( "group", Raycaster.selected.group );
+                    scope.current.set( "segment", Raycaster.selected.segment );
+
+                    await Forms.group.select();
+
+                    let mode = Handles.forms.widget.mode.fields[ "Mode" ][ "points" ].field;
+                        mode.update( Process.mode.status.points );
+
+                    let group = Handles.get.forms( "group/groups/Select Group/name" );
+                        group.update( name );
+                        group.state( name );
+
+                    await Forms.points.segments();
+
+                    let container = Handles.forms.group.groups.container;
+                        container.collapse( false );
+                        container.select( "Group Segments" );
+
+                    let segments = await Handles.get.forms( "group/groups/Group Segments/segments" );
+                        segments.update( Raycaster.selected.segment );
+
+                    Process.segments.select( segments );
+                }
+            },
+            view: () => {}
+        },
         mode:
         {
             init: () =>
             {
+                Forms.widget.common();
                 Process.helpers.all();
-                Forms.group.select();
                 Raycaster.initialize();
                 Listeners.initialize();
                 Objects.plot.all();
@@ -481,25 +562,44 @@ const Designer = function()
             set: ( field ) =>
             {
                 Object.assign( Process.mode.status, { [ field.name ]: field.value } );
-                Raycaster.mode = field.value;
+
+                Process[ field.name ][ field.value ]( field );
             },
             status: {}
         },
         points:
         {
-            add: ( e ) =>
+            // modes
+            add: ( field ) =>
             {
-                console.log( e );
-                /*var data = scope.current.data.points.find( obj => obj.name == scope.current.name );
-                var params = {};
-                    params.map = field.value;
-                    params.output = "realtime";
-                    params.value = data[ field.value ];
-
-                Process.segments.path( params );
-                Process.points.save( params );*/
+                Raycaster.mode = field.value;
+                Process.helpers.visibility( "crosshairs", true );
+                Process.helpers.visibility( "cursor", true );
+                Process.helpers.visibility( "grid", true );
             },
-            change: ( field ) =>
+            edit: ( field ) =>
+            {
+                Raycaster.mode = field.value;
+                Process.helpers.visibility( "crosshairs", false );
+                Process.helpers.visibility( "cursor", true );
+                Process.helpers.visibility( "grid", true );
+            },
+            select: ( field ) =>
+            {
+                Raycaster.mode = field.value;
+                Process.helpers.visibility( "crosshairs", false );
+                Process.helpers.visibility( "cursor", false );
+            },
+            view: ( field ) =>
+            {
+                Raycaster.mode = field.value;
+                Process.helpers.visibility( "crosshairs", false );
+                Process.helpers.visibility( "cursor", false );
+                Process.helpers.visibility( "grid", false );
+            }
+
+
+            /*change: ( field ) =>
             {
                 var data = scope.current.data.points.find( obj => obj.name == scope.current.name );
                 var params = {};
@@ -509,7 +609,7 @@ const Designer = function()
 
                 Process.segments.path( params );
                 Process.points.save( params );
-            },
+            },*/
             /*create: () =>
             {
                 // create new set
@@ -542,13 +642,13 @@ const Designer = function()
 
                 traverse( scope.current.params.data, data );
 
-                Process.hooks.points.points.refresh( { data: scope.current.params.value } );
-                Process.hooks.points.points.element.parentNode.classList.remove( "hide" );
-                Process.hooks.points.check( set );
+                Handles.forms.points.points.refresh( { data: scope.current.params.value } );
+                Handles.forms.points.points.element.parentNode.classList.remove( "hide" );
+                Handles.forms.points.check( set );
 
                 //Process.points.save();
             },*/
-            delete: ( field ) =>
+            /*delete: ( field ) =>
             {
                 var data = scope.current.data.points.find( obj => obj.name == scope.current.name );
                 var params = {};
@@ -558,19 +658,20 @@ const Designer = function()
 
                 Process.segments.path( params );
                 Process.points.save( params );
-            },
-            highlight: ( args ) =>
+            },*/
+
+            /*highlight: ( args ) =>
             {
                 // group > set > array > mouseover()
                 if ( args.value )
                     Objects.markers.highlight( args );
-            },
-            move: () =>
+            },*/
+            /*move: () =>
             {
                 Objects.cursor.visibility( Raycaster.enabled );
                 Objects.crosshairs.visibility( Raycaster.enabled );
-            },
-            reorder: ( args ) =>
+            },*/
+            /*reorder: ( args ) =>
             {
                 var key = args.field.data.source.params.key;
                 var data = scope.current.data.points.find( obj => obj[ key ] == scope.current.name );
@@ -588,33 +689,19 @@ const Designer = function()
 
                 Process.segments.path( params );
                 Process.points.save( params );
-            },
-            reset: () =>
+            },*/
+            /*reset: () =>
             {
                 console.warn( "not implemented" );
-            },
-            save: ( params ) =>
+            },*/
+            /*save: ( params ) =>
             {
                 console.warn( "save", params );
 
                 // save to db
                 app.setters.db( params, () => Objects.plot.group( scope.current.group ) );
-            },
-            select: () =>
-            {
-                // this is a Listener
-                // TODO: implement mode.select
-                if ( Raycaster.selected )
-                {
-                    let name = Raycaster.selected.group;
+            },*/
 
-                    console.warn( "not implemented", Process.mode.status, Raycaster.selected );
-
-
-
-
-
-                }
                 /*
                 var data = scope.current.data.points.find( object => object.name == name );
 
@@ -631,24 +718,23 @@ const Designer = function()
                     scope.current.set( "group", scope.group.getObjectByName( name ) );
 
                     // update the group tree
-                    Process.hooks.group.name.update( name );
-                    Process.hooks.group.name.state( name );
+                    Handles.forms.group.name.update( name );
+                    Handles.forms.group.name.state( name );
 
                     // update the segments
                     //Forms.points.segments();
-                    Process.hooks.points.segment.update( Raycaster.selected.segment );
-                    Process.hooks.points.segment.state( Raycaster.selected.segment );
+                    Handles.forms.points.segment.update( Raycaster.selected.segment );
+                    Handles.forms.points.segment.state( Raycaster.selected.segment );
 
                     // update the popup
-                    if ( Process.hooks.points && Process.hooks.points.popup )
-                        Process.hooks.points.popup.destroy();
+                    if ( Handles.forms.points && Handles.forms.points.popup )
+                        Handles.forms.points.popup.destroy();
 
-                    Forms.points.edit( detail );
+
                 }*/
-            },
-            set: () =>
+            /*set: () =>
             {
-                var data = scope.current.data.points.find( obj => obj.name == Raycaster.selected.group );
+                var data = scope.current.data.points.find( obj => obj.name == Raycaster.selected.name );
                 var params = {};
                     params.map = Raycaster.selected.segment;
                     params.output = "realtime";
@@ -657,7 +743,7 @@ const Designer = function()
                 Process.segments.path( params );
 
                 // set from mouse click
-                if ( params.value && Process.hooks.points )
+                if ( params.value && Handles.forms.points )
                 {
                     let position = scope.cursor.object.position.clone();
                     let vector = {};
@@ -667,16 +753,17 @@ const Designer = function()
 
                     params.value.push( vector );
 
-                    Process.hooks.points.array.refresh( { data: params.value } );
+                    Handles.forms.points.array.refresh( { data: params.value } );
                     Process.points.save( params );
                 }
-            },
-            unlight: ( args ) =>
+            },*/
+            /*unlight: ( args ) =>
             {
                 // group > set > array > mouseout()
                 if ( args.value )
                     Objects.markers.unlight( args );
-            }
+            },*/
+
         },
         project:
         {
@@ -686,7 +773,7 @@ const Designer = function()
                 UI.reset( app.ui.widget );
 
                 var key = "name";
-                var cell = field.Row.cols.find( col => col.field[ key ] == key );
+                var cell = field.row.cols.find( col => col.field[ key ] == key );
                 var collections = [ "groups", "points" ];
 
                 if ( cell )
@@ -747,21 +834,29 @@ const Designer = function()
         {
             add: () =>
             {
-                Process.helpers.visibility( "crosshairs", true );
-                Process.helpers.visibility( "cursor", true );
-                Process.helpers.visibility( "grid", true );
-            },
-            select: ( args ) =>
-            {
-                var group = scope.group.getObjectByName( args.group );
 
+            },
+            edit: ( args ) =>
+            {
                 Raycaster.intersects.forEach( line =>
                 {
                      Process.segments.unlight( line.parent, line.userData.segment );
                 } );
 
-                Process.segments.highlight( group, args.segment );
-                Raycaster.selected = args;
+                Process.segments.highlight( args.group, args.segment );
+            },
+            select: ( args ) =>
+            {
+                Raycaster.intersects.forEach( line =>
+                {
+                     Process.segments.unlight( line.parent, line.userData.segment );
+                } );
+
+                Process.segments.highlight( args.group, args.segment );
+
+                Raycaster.selected = { group: args.group, name: args.name, segment: args.segment };
+                Raycaster.fields.name.update( args.name );
+                Raycaster.fields.selected.update( args.segment );
             }
         },
         segments:
@@ -793,13 +888,13 @@ const Designer = function()
 
                     submit.reset();
 
-                    Forms.points.edit( input.data );
+                    Process.segments.select( input.data );
                 }
             },
-            change: ( event ) =>
+            /*change: ( event ) =>
             {
-                Forms.points.edit( event.detail );
-            },
+                //Forms.points.edit( event.detail );
+            },*/
             delete: ( field, key ) =>
             {
                 var params = {};
@@ -821,7 +916,7 @@ const Designer = function()
                         value: scope.current.name
                     };
 
-                    Process.hooks.points.segment.refresh( refresh );
+                    Handles.forms.points.segment.refresh( refresh );
 
                     // clear the drawing
                     var args =
@@ -833,23 +928,25 @@ const Designer = function()
                     Objects.plot.delete( args );
                 } );
 
-                if ( Process.hooks.points.popup )
-                    Process.hooks.points.popup.destroy();
+                if ( Handles.forms.points.popup )
+                    Handles.forms.points.popup.destroy();
             },
-            highlight: ( group, key ) =>
+            highlight: ( group, segment ) =>
             {
-                if ( group.visible )
+                var predicate = Process.mode.status.points == "edit" ? group.visible && group.name == scope.current.name : group.visible;
+
+                if ( predicate )
                     group.children.forEach( ( child ) =>
                     {
                         if ( child.material )
-                            if ( child.userData.segment == key )
+                            if ( child.userData.segment == segment )
                             {
                                 child.material.color = new THREE.Color();
                                 child.material.opacity = 1;
                             }
                     } );
             },
-            reset: ( field, key ) =>
+            /*reset: ( field, key ) =>
             {
                 var params = {};
                     params.map = key;
@@ -872,7 +969,7 @@ const Designer = function()
                         data: params.value
                     };
 
-                    Forms.points.edit( detail );
+                    //Forms.points.edit( detail );
 
                     // refresh the segments list
                     var refresh =
@@ -882,22 +979,25 @@ const Designer = function()
                         value: scope.current.name
                     };
 
-                    Process.hooks.points.segment.refresh( refresh );
+                    Handles.forms.points.segment.refresh( refresh );
                 } );
-            },
+            },*/
             select: ( field ) =>
             {
+                Raycaster.selected = { group: scope.current.group, name: scope.current.name, segment: field.selected.text };
+                Process.raycaster.select( Raycaster.selected );
+
                 Forms.points.edit( field );
             },
-            unlight: ( group, key ) =>
+            unlight: ( group, segment ) =>
             {
                 group.children.forEach( ( child ) =>
                 {
-                    if ( child.material )
-                        if ( child.userData.segment == key )
+                    if ( child.material && child.parent.userData.color )
+                        if ( child.userData.segment == segment )
                         {
                             child.material.color = new THREE.Color( child.parent.userData.color );
-                            child.material.opacity = child.userData.group == scope.current.name ? 1 : scope.settings.appearance.opacity;
+                            child.material.opacity = child.userData.name == scope.current.name ? 1 : scope.settings.appearance.opacity;
                         }
                 } );
             }
@@ -1004,26 +1104,13 @@ const Designer = function()
 
     const Forms =
     {
-        project:
-        {
-            select: () =>
-            {
-                var form = new DB.Forms( { title: "Select Project", parent: app.ui.modal, format: "box" } );
-                    form.container.add( { name: "Select Project", config: { numbers: false, headings: true } } );
-                    form.composite.init(
-                    [
-                        { name: "name", type: "combo", source: { key: "name", path: "projects", output: "static" } },
-                        { name: null, type: "submit", value: "select", handlers: [ { event: "click", handler: Process.project.load } ] }
-                    ] );
-            }
-        },
         group:
         {
-            edit: () =>
+            edit: async () =>
             {
-                var form = Process.hooks.group.form;
+                var form = Handles.forms.group.form;
                     form.container.add( { name: "Edit Group", child: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
-                    form.composite.init(
+                await form.composite.init(
                     [
                         {
                             name: "delete", type: "match", icon: String.fromCodePoint( 10799 ), value: scope.current.name,
@@ -1035,61 +1122,14 @@ const Designer = function()
                             handlers: [ { event: "valid", handler: Process.group.color } ]
                         }
                     ] );
+
+                return true;
             },
-            select: () =>
+            select: async () =>
             {
-                var mode = new DB.Forms( { parent: app.ui.widget, title: "Mode", format: "box" } );
-                    mode.container.add( { name: "Mode", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
-                    mode.composite.init(
-                    [
-                        { name: "points", type: "label", value: "", horizontal: true,
-                            options: [ { text: "view" }, { text: "select" }, { text: "add" } ],
-                            handlers: [ { event: "click", handler: Process.mode.set } ]
-                        }
-                    ] );
-
-                var settings = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Settings", format: "tabs" } );
-                    settings.container.add( { name: "Grid", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
-                    settings.composite.init(
-                    [
-                        { name: "position", type: "vector", value: scope.settings.grid.position,
-                            handlers: [ { event: "click", handler: Process.settings.grid.position } ]
-                        },
-                        { break: true, name: "visible", type: "toggle", value: scope.settings.grid.visible, 
-                            options: [ { text: "on", value: true }, { text: "off", value: false } ],
-                            handlers: [ { event: "click", handler: Process.settings.grid.visible } ]
-                        },
-                        { break: true, name: "size", type: "vector", value: scope.settings.grid.size,
-                            handlers: [ { event: "input", handler: Process.settings.grid.size } ]
-                        },
-                        { break: true, name: "snap", type: "number", value: scope.settings.grid.snap,
-                            attributes: { step: scope.settings.grid.snap },
-                            handlers: [ { event: "input", handler: Process.settings.grid.snap } ]
-                        }
-                    ] );
-                    settings.container.add( { name: "Appearance", config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
-                    settings.composite.init(
-                    [
-                        { label: "cursor color", name: "color", type: "color", value: scope.settings.appearance.cursor.color,
-                            handlers: [ { event: "valid", handler: Process.settings.appearance.cursor } ]
-                        },
-                        { label: "cursor size", name: "size", type: "number", value: scope.settings.appearance.cursor.size,
-                            attributes: { step: 0.1, min: 0.1, max: 1 },
-                            handlers: [ { event: "click", handler: Process.settings.appearance.cursor } ]
-                        },
-                        { break: true, label: "marker size", name: "marker", type: "number", value: scope.settings.appearance.marker,
-                            attributes: { step: 0.05, min: 0.05, max: 1 },
-                            handlers: [ { event: "input", handler: Process.settings.appearance.marker } ]
-                        },
-                        { break: true, label: "line opacity", name: "opacity", type: "number", value: scope.settings.appearance.opacity,
-                            attributes: { step: 0.05, min: 0, max: 1 },
-                            handlers: [ { event: "input", handler: Process.settings.appearance.opacity } ]
-                        }
-                    ] );
-
-                var form = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Groups", format: "tabs" } );
-                    form.container.add( { name: "Select Group", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
-                    form.composite.init(
+                var groups = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Groups", format: "tabs" } );
+                    groups.container.add( { name: "Select Group", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                await groups.composite.init(
                     [
                         {
                             name: "name", type: "tree", value: "",
@@ -1098,20 +1138,31 @@ const Designer = function()
                         }
                     ] );
 
-                Process.hooks.group =
+                Handles.forms.group =
                 {
-                    form: form
+                    groups: groups
                 };
+
+                return true;
             }
         },
         points:
         {
-            edit: ( field ) =>
+            edit: async ( field ) =>
             {
-                var option = Tools.unset( field.data );
+                var popup = new DB.Forms( { parent: document.body, title: "Points", format: "popup" } );
+                    popup.container.add( { name: "segment", config: { add: true, borders: false, hover: false, numbers: true, headings: true } } );
+                await popup.composite.init(
+                    [
+                        { name: field.selected.text, type: "vector" },
+                        { name: null, type: "click" }
+                    ] );
+                    popup.composite.source.option( field );
 
-                // TODO: edit points / pop up vectors
-                console.log( field, option );
+                return true;
+
+                // TODO: drag and drop
+                //console.log( field, option );
                 /*var key = detail.field.value;
                 var form = new DB.Forms();
                     form.init( { name: "points", parent: null, title: "Points" } );
@@ -1128,41 +1179,28 @@ const Designer = function()
                         ]
                     } );
 
-                Process.hooks.points.popup = form;
-                Process.hooks.points.array = array;
+                Handles.forms.points.popup = form;
+                Handles.forms.points.array = array;
 
-                form.popup( Process.hooks.points.target.form );*/
+                form.popup( Handles.forms.points.target.form );*/
             },
-            segments: () =>
+            segments: async () =>
             {
                 var data = scope.current.data.points.find( obj => obj.name == scope.current.name ) || [];
-                var form = Process.hooks.group.form;
+                var form = Handles.forms.group.groups;
                     form.container.add( { name: "Group Segments", child: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
-                    form.composite.init(
+                await form.composite.init(
                     [
-                        {
-                            name: "group",
-                            type: "readonly",
-                            required: false,
-                            value: scope.current.name
-                        }
-                    ] );
-                    form.composite.init(
-                    [
-                        {
-                            break: true,
-                            name: "segments",
-                            type: "label",
+                        { name: "group", type: "label", value: scope.current.name },
+                        { break: true, name: "segments", type: "buttons", multiple: false,
                             options: form.composite.from.object.to.options( { key: "name", data: data } ),
                             handlers: [ { event: "click", handler: Process.segments.select } ]
-                        }
-                    ] );
-                    form.composite.init(
-                    [
+                        },
                         { break: true, name: "new segment", type: "text" },
                         { name: null, type: "submit", value: "add", handlers: [ { event: "click", handler: Process.segments.add } ] }
                     ] );
 
+                return true;
                 // TODO: clear this shit out
                 //console.log( data, form.composite.from.object.to.options( { key: "name", data: data } ) );
 
@@ -1188,11 +1226,106 @@ const Designer = function()
                         ]
                     } );
 
-                Process.hooks.points =
+                Handles.forms.points =
                 {
                     target: form,
                     segment: segment
                 };*/
+            }
+        },
+        project:
+        {
+            select: async () =>
+            {
+                var form = new DB.Forms( { title: "Select Project", parent: app.ui.modal, format: "box" } );
+                    form.container.add( { name: "Select Project", config: { numbers: false, headings: true } } );
+                await form.composite.init(
+                    [
+                        { name: "name", type: "combo", source: { key: "name", path: "projects", output: "static" } },
+                        { name: null, type: "submit", value: "select", handlers: [ { event: "click", handler: Process.project.load } ] }
+                    ] );
+
+                return true;
+            }
+        },
+        widget:
+        {
+            common: async () =>
+            {
+                var mode = new DB.Forms( { parent: app.ui.widget, title: "Mode", format: "box" } );
+                    mode.container.add( { name: "Mode", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    mode.composite.init(
+                    [
+                        { name: "points", type: "buttons", value: "view", horizontal: true,
+                            options: [ { text: "view" }, { text: "select" }, { text: "edit" }, { text: "add" } ],
+                            handlers: [ { event: "click", handler: Process.mode.set } ]
+                        }
+                    ] );
+
+                var info = new DB.Forms( { parent: app.ui.widget, title: "Info", format: "tabs" } );
+                    info.container.add( { name: "Raycaster", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                await info.composite.init(
+                    [
+                        { label: "cursor position", name: "cursor", type: "vector" },
+                        { break: true, label: "group", name: "name", type: "label", value: scope.current.name },
+                        { break: true, label: "selected segment", name: "selected", type: "label", value: scope.current.segment },
+                        { break: true, label: "current segment", name: "current", type: "label", value: scope.current.segment }
+                    ] );
+
+                var settings = new DB.Forms( { collapsed: true, parent: app.ui.widget, title: "Settings", format: "tabs" } );
+                    settings.container.add( { name: "Grid", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    settings.composite.init(
+                    [
+                        { name: "position", type: "vector", value: scope.settings.grid.position,
+                            handlers: [ { event: "click", handler: Process.settings.grid.position } ]
+                        },
+                        { break: true, name: "size", type: "vector", value: scope.settings.grid.size,
+                            handlers: [ { event: "input", handler: Process.settings.grid.size } ]
+                        },
+                        { break: true, name: "snap unit", type: "number", value: scope.settings.grid.snap,
+                            attributes: { step: scope.settings.grid.snap },
+                            handlers: [ { event: "input", handler: Process.settings.grid.snap } ]
+                        },
+                        { break: true, label: "visibility", name: "visible", type: "toggle", value: scope.settings.grid.visible,
+                            options: [ { text: "on", value: true }, { text: "off", value: false } ],
+                            handlers: [ { event: "click", handler: Process.settings.grid.visible } ]
+                        }
+                    ] );
+                    settings.container.add( { name: "Appearance", config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
+                    settings.composite.init(
+                    [
+                        { label: "cursor color", name: "color", type: "color", value: scope.settings.appearance.cursor.color,
+                            handlers: [ { event: "valid", handler: Process.settings.appearance.cursor } ]
+                        },
+                        { label: "cursor size", name: "size", type: "number", value: scope.settings.appearance.cursor.size,
+                            attributes: { step: 0.1, min: 0.1, max: 1 },
+                            handlers: [ { event: "click", handler: Process.settings.appearance.cursor } ]
+                        },
+                        { break: true, label: "marker size", name: "marker", type: "number", value: scope.settings.appearance.marker,
+                            attributes: { step: 0.05, min: 0.05, max: 1 },
+                            handlers: [ { event: "input", handler: Process.settings.appearance.marker } ]
+                        },
+                        { break: true, label: "line opacity", name: "opacity", type: "number", value: scope.settings.appearance.opacity,
+                            attributes: { step: 0.05, min: 0, max: 1 },
+                            handlers: [ { event: "input", handler: Process.settings.appearance.opacity } ]
+                        }
+                    ] );
+
+                Handles.forms.widget =
+                {
+                    mode: mode,
+                    info: info
+                };
+
+                Raycaster.fields =
+                {
+                    cursor: Handles.get.forms( "widget/info/Raycaster/cursor" ),
+                    name: Handles.get.forms( "widget/info/Raycaster/name" ),
+                    selected: Handles.get.forms( "widget/info/Raycaster/selected" ),
+                    current: Handles.get.forms( "widget/info/Raycaster/current" )
+                };
+
+                return true;
             }
         }
     };
@@ -1306,21 +1439,26 @@ const Designer = function()
     {
         initialize: () =>
         {
+            var canvas = document.getElementById( "renderer" );
+                canvas.addEventListener( 'dblclick', Listeners.dblclick, false );
+                canvas.addEventListener( 'mousemove', Mouse.move, false );
+                canvas.addEventListener( 'mousedown', Mouse.down, false );
+
             //document.addEventListener( 'keydown',   Listeners.keydown, false );
             //document.addEventListener( 'keyup',     Listeners.keyup, false );
-            document.addEventListener( 'mousemove', Mouse.move, false );
-            document.addEventListener( 'mousedown', Mouse.down, false );
+
             //document.addEventListener( 'mouseup',   Mouse.up, false );
-            document.addEventListener( 'click',     Listeners.click, false );
-            document.addEventListener( 'dblclick',  () => UI.cancel( app.ui.modal ), false );
+
+            //document.addEventListener( 'dblclick',  () => UI.cancel( app.ui.modal ), false );
         },
-        click: ( event ) =>
+        dblclick: ( event ) =>
         {
             event.preventDefault();
 
             if ( Process.mode.status.points )
-                Process.points[ Process.mode.status.points ]();
-        },
+                Process.listeners[ Process.mode.status.points ]();
+        }
+        // TODO: clean up listeners
         /*keydown: ( event ) =>
         {
             if ( event.key === "Shift" )
@@ -1455,7 +1593,7 @@ const Designer = function()
                     material.opacity = scope.settings.appearance.opacity;
                 var lines = new THREE.Line( geometry, material );
                     lines.name = "line";
-                    lines.userData.group = args.group.name;
+                    lines.userData.name = args.group.name;
                     lines.userData.segment = args.segment;
 
                 args.group.add( lines );
@@ -1492,7 +1630,7 @@ const Designer = function()
             {
                 var marker = new Helpers.Marker( scope.markers.group, scope.settings.appearance.marker, args.color );
                     marker.object.position.copy( args.point );
-                    marker.object.userData.group = args.group.name;
+                    marker.object.userData.name = args.group.name;
                     marker.object.userData.segment = args.segment;
                     marker.object.userData.index = args.index;
             },
@@ -1510,7 +1648,7 @@ const Designer = function()
 
                 scope.markers.group.children.forEach( child =>
                 {
-                    if ( child.userData.group == args.group.name && child.userData.segment == args.segment )
+                    if ( child.userData.name == args.group.name && child.userData.segment == args.segment )
                         Objects.dispose( scope.markers.group, child );
                 } );
             },
@@ -1518,7 +1656,7 @@ const Designer = function()
             {
                 scope.markers.group.children.forEach( child =>
                 {
-                    if ( child.userData.group == args.group.name )
+                    if ( child.userData.name == args.group.name )
                         child.visible = !child.visible;
                 } );
             },*/
@@ -1688,7 +1826,15 @@ const Designer = function()
                     Raycaster.position = ( point ) => new THREE.Vector3().fromArray( Tools.snap( point, Raycaster.snap ) );
                 break;
 
+                case "edit":
+                    Raycaster.first = true;
+                    Raycaster.intersects = Objects.lines.all( scope.current.group, [] ).concat( scope.grid.object );
+                    Raycaster.action = ( args ) => Process.raycaster[ Raycaster.mode ]( args );
+                    Raycaster.position = ( point ) => new THREE.Vector3().fromArray( Tools.snap( point, new THREE.Vector3() ) );
+                break;
+
                 case "select":
+                    Raycaster.first = false;
                     Raycaster.intersects = Objects.lines.all( scope.group, [] );
                     Raycaster.action = ( args ) => Process.raycaster[ Raycaster.mode ]( args );
                     Raycaster.position = ( point ) => new THREE.Vector3().fromArray( Tools.snap( point, new THREE.Vector3() ) );
@@ -1704,19 +1850,33 @@ const Designer = function()
         update: () =>
         {
             Raycaster.raycaster.setFromCamera( Mouse, app.stage.camera );
-            Raycaster.objects();
             Raycaster.enabled = !!Raycaster.intersect.length && Mouse.enabled;
+            Raycaster.objects();
 
             var index = Raycaster.first ? 0 : Raycaster.intersect.length - 1;
 
-            if ( Raycaster.enabled )
+            if ( Raycaster.enabled && Raycaster.intersect[ index ] )
             {
-                let position = new THREE.Vector3();
-                    position.copy( Raycaster.position( Raycaster.intersect[ index ].point ) );
-                let data = Raycaster.intersect[ index ].object.userData;
+                let position = new THREE.Vector3().copy( Raycaster.position( Raycaster.intersect[ index ].point ) );
+                let args = {};
 
-                Raycaster.action( data );
+                Raycaster.current = Object.assign( { group: Raycaster.intersect[ index ].object.parent }, Raycaster.intersect[ index ].object.userData );
 
+                switch ( Raycaster.mode )
+                {
+                    case "edit":
+                        args = Raycaster.selected;
+                        Raycaster.fields.cursor.update( new THREE.Vector3().fromArray( Tools.snap( position, Raycaster.snap ) ) );
+                    break;
+
+                    case "select":
+                        args = Raycaster.current;
+                        Raycaster.fields.cursor.update( Tools.vector.round( position, 2 ) );
+                    break;
+                }
+
+                Raycaster.action( args );
+                Raycaster.fields.current.update( Raycaster.current.segment || "" );
                 Objects.cursor.move( position );
                 Objects.crosshairs.move( position );
             }
@@ -1726,16 +1886,10 @@ const Designer = function()
     const Tools =
     {
         color: ( value ) => value.substring( value.length - 7 ),
-        snap: ( point, spacing ) =>
-        {
-            if ( scope.settings.grid.snap )
-                return axes.map( axis => Math.round( point[ axis ] / spacing[ axis ] ) * spacing[ axis ] );
-            else
-                return axes.map( axis => point[ axis ] );
-        },
         isArray: ( obj ) => Object.prototype.toString.call( obj ) === '[object Array]',
         isObject: ( obj ) => ( typeof obj === 'object' ) && ( obj !== null ),
         isValue: ( value ) => !( ( value == "" ) || ( value == null ) || ( typeof value == "undefined" ) ),
+        precision: ( value, decimals ) => Math.round( value * Math.pow( 10, decimals ) ) / Math.pow( 10, decimals ),
         query: async ( params ) =>
         {
             var response = await app.getters.db( params );
@@ -1753,6 +1907,13 @@ const Designer = function()
 
             return data;
         },
+        snap: ( point, spacing ) => axes.map( axis =>
+        {
+            if ( scope.settings.grid.snap && spacing[ axis ] )
+                return Math.round( point[ axis ] / spacing[ axis ] ) * spacing[ axis ];
+            else
+                return point[ axis ];
+        } ),
         traverse:
         {
             //Tools.traverse.down( scope.groups, "uuid", data.parent );
@@ -1798,6 +1959,10 @@ const Designer = function()
                 value = item;
 
             return value;
+        },
+        vector:
+        {
+            round: ( vector, decimals ) => new THREE.Vector3().fromArray( Object.values( vector ).map( value => Tools.precision( value, decimals ) ) )
         }
     };
 

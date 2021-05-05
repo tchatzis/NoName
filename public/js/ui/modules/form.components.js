@@ -11,23 +11,121 @@ function handles()
 
 export const Components =
 {
-    action: function()
+    bind: function()
     {
         //TODO: like submit, but it is tied to the value of the previous field
     },
 
-    click: function()
+    buttons: function()
     {
         var field = this;
+        var data = new Set();
+        var values = new Set();
+        var toggle =
+        {
+            data: ( option ) =>
+            {
+                var value = option.text;
 
+                if ( value && values.has( value ) )
+                    data.add( option );
+                else
+                    data.delete( option );
+            },
+
+            values: ( value ) =>
+            {
+                if ( value && !values.has( value ) )
+                    values.add( value );
+                else
+                    values.delete( value );
+            }
+        }
+
+        this.required = true;
+
+        this.element = document.createElement( "div" );
+        this.element.setAttribute( "id", field.id );
+        this.element.setAttribute( "name", this.name );
+
+        if ( this.horizontal )
+            this.element.classList.add( "formsxs" );
+
+        this.parent.appendChild( this.element );
+
+        this.render = () =>
+        {
+            this.element.innerHTML = null;
+
+            this.options.forEach( option =>
+            {
+                var item = document.createElement( "div" );
+                    item.innerText = option.text;
+                    item.setAttribute( "data-text", option.text );
+                    item.classList.add( "formlink" );
+                    item.style.textAlign = "left";
+                    item.addEventListener( "click", () => field.update( option.text ), false );
+
+                this.element.appendChild( item );
+            } );
+        };
+
+        this.update = ( value ) =>
+        {
+            if ( this.multiple )
+            {
+                toggle.values( value );
+                this.value = Array.from( values );
+            }
+            else
+                this.value = value;
+
+            this.data[ this.row.index ][ this.name ] = this.value;
+
+            state();
+        };
+
+        this.render();
+        this.update( this.value );
+
+        function select( value )
+        {
+            return field.options.find( option => option.text == value );
+        }
+
+        function state()
+        {
+            Array.from( field.element.children ).forEach( item =>
+            {
+                var name = item.getAttribute( "data-text" );
+                var predicate = field.multiple ? values.has( name ) : name == field.value;
+                var use = field.multiple ? name : field.value;
+                var option = select( use );
+
+                if ( predicate )
+                    item.classList.add( "formselected" );
+                else
+                    item.classList.remove( "formselected" );
+
+                if ( field.multiple )
+                {
+                    toggle.data( option );
+                    field.selected = Utils.copy( Array.from( data ) );
+                }
+                else
+                    field.selected = option;
+            } );
+        }
+    },
+
+    click: function()
+    {
         this.required = false;
-        this.value = !this.row;
+        this.value = !this.row.index;
 
         this.element = document.createElement( "div" );
         this.element.classList.add( "formbutton" );
         this.element.addEventListener( "click", () => this.action( this ), false );
-
-        //this.handlers.forEach( type => this.element.addEventListener( type.event, () => type.handler( field ), false ) );
 
         this.parent.appendChild( this.element );
 
@@ -70,7 +168,7 @@ export const Components =
         this.update = ( value ) =>
         {
 
-            this.data[ this.row ][ this.name ] = value;
+            this.data[ this.row.index ][ this.name ] = value;
             this.value = value;
             this.element.value = value;
             this.color.style.backgroundColor = value;
@@ -165,7 +263,7 @@ export const Components =
             let object = this.options[ this.index ];
 
             this.element.innerText = object.text;
-            this.data[ this.row ][ this.name ] = object.value;
+            this.data[ this.row.index ][ this.name ] = object.value;
             this.value = object.text;
         };
 
@@ -193,82 +291,21 @@ export const Components =
 
         this.parent.appendChild( this.element );
     },
-    
+
     label: function()
     {
-        var field = this;
-        var data = new Set();
+        this.required = false;
 
-        this.required = true;
-        
         this.element = document.createElement( "div" );
-        this.element.setAttribute( "id", field.id );
-        this.element.setAttribute( "name", this.name );
+        this.element.innerText = this.value;
+        this.element.classList.add( "formspan" );
 
-        if ( this.horizontal )
-            this.element.classList.add( "formsxs" );
-        
         this.parent.appendChild( this.element );
-
-        this.render = () =>
-        {
-            this.element.innerHTML = null;
-
-            this.options.forEach( option =>
-            {
-                var item = document.createElement( "div" );
-                    item.innerText = option.text;
-                    item.classList.add( "formlink" );
-                    item.style.textAlign = "left";
-                    item.addEventListener( "click", () =>
-                    {
-                        if ( !field.multiple )
-                        {
-                            data = new Set();
-                            reset();
-                        }
-
-                        this.data = data.add( option );
-                        this.update( option.text );
-                        this.state( item, option.text, option );
-                    }, false );
-
-                this.element.appendChild( item );
-                this.state( item, this.value, option );
-            } );
-        };
-
-        this.state = ( item, value, option ) =>
-        {
-            var predicate;
-
-            if ( this.multiple )
-            {
-                let selected = item.classList.contains( "formselected" );
-
-                if ( selected )
-                    data.delete( option );
-
-                predicate = data.has( option );
-            }
-            else
-                predicate = item.innerText == value;
-
-            if ( predicate )
-                item.classList.add( "formselected" );
-        };
 
         this.update = ( value ) =>
         {
-            this.value = value;
+            this.element.innerText = value;
         };
-
-        this.render();
-
-        function reset()
-        {
-            Array.from( field.element.children ).forEach( item => item.classList.remove( "formselected" ) );
-        }
     },
 
     match: function()
@@ -382,7 +419,7 @@ export const Components =
         {
             Object.keys( value ).forEach( axis =>
             {
-                this.data[ this.row ][ this.name ][ axis ] = value[ axis ];
+                this.data[ this.row.index ][ this.name ][ axis ] = value[ axis ];
                 this.value[ axis ] = value[ axis ];
 
                 var input = this.components.find( input => input.name == axis );
@@ -430,7 +467,7 @@ export const Components =
             var index = this.element.selectedIndex;
             var value = this.element.options[ index || 0 ].value;
 
-            this.data[ this.row ][ this.name ] = value;
+            this.data[ this.row.index ][ this.name ] = value;
             this.value = value;
             this.element.selectedIndex = index;
         };
@@ -462,7 +499,7 @@ export const Components =
 
         function click()
         {
-            var valid = field.Row.validate();
+            var valid = field.row.validate();
 
             if ( valid )
                 if ( handlers.click )
@@ -501,7 +538,7 @@ export const Components =
             this.element.classList[ action ]( "formselected" );
 
             this.element.innerText = object.text;
-            this.data[ this.row ][ this.name ] = object.value;
+            this.data[ this.row.index ][ this.name ] = object.value;
             this.value = object.value;
         };
 
@@ -751,9 +788,13 @@ export const Components =
         this.state = ( value ) =>
         {
             var item = items.querySelector( `[ data-value = "${ value }" ]` );
-            var label = item.querySelector( "span" );
 
-            state( label, value );
+            if ( item )
+            {
+                let label = item.querySelector( "span" );
+
+                state( label, value );
+            }
         };
 
         this.render();
@@ -801,7 +842,7 @@ export const Components =
         {
             Object.keys( value ).forEach( axis =>
             {
-                this.data[ this.row ][ this.name ][ axis ] = value[ axis ];
+                this.data[ this.row.index ][ this.name ][ axis ] = value[ axis ];
 
                 this.value[ axis ] = value[ axis ];
 

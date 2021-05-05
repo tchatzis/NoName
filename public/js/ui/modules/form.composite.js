@@ -10,17 +10,6 @@ export function Composite( args )
     var labels = {};
     var form = args.form;
         form.fields[ this.name ] = {};
-    // add row and columns
-    var add = async function( columns )
-    {
-        this.table.row.create();
-
-        var promises = [];
-
-        columns.forEach( ( args, index ) => promises.push( this.table.row.col.add( args, index ) ) );
-
-        return Promise.all( promises );
-    }.bind( this );
 
     var Col = function( row )
     {
@@ -35,15 +24,16 @@ export function Composite( args )
             if ( composite.config.borders == true )
                 element.classList.add( "table-border" );
 
-            args.col = index;
+            args.col = { index: index };
             args.data = composite.data;
             args.id = `${ composite.name }.${ this.row.index }.${ args.name || args.type }`;
             args.parent = element;
-            args.row = this.row.index;
+            args.row = { index: this.row.index };
 
             this.field = await Utils.invoke.call( form, args );
-            this.field.Row =
+            this.field.row =
             {
+                index: this.row.index,
                 cols: this.row.cols,
                 validate: this.row.validate
             };
@@ -54,11 +44,11 @@ export function Composite( args )
             var data =
             {
                 break: args.break,
-                col: index,
+                col: { index: index },
                 element: element,
                 field: this.field,
-                row: this.row.index
-            };
+                row: { index: this.row.index }
+            }
 
             this.row.cols.push( data );
 
@@ -70,11 +60,50 @@ export function Composite( args )
 
     var Row = function( table )
     {
+        var number = () =>
+        {
+            var div = Utils.create( "table-number" );
+                div.innerText = this.index || "\u27a4";//»U+00BB\u27b2
+
+            this.element.prepend( div );
+        };
+
+        // load the data into the row
+        var populate = async ( data ) =>
+        {
+            var columns = [];
+            var validated = [];
+            var values = [];
+
+            this.fields.forEach( ( field, col ) =>
+            {
+                var value = Utils.copy( data[ col ] || field.value );
+                var copy = Object.assign( {}, field );
+                    copy.value = value;
+                var valid = copy.validate();
+
+                validated.push( valid );
+                values.push( { [ copy.name ]: copy.value } );
+
+                if ( valid )
+                {
+                    columns.push( new composite.Col( copy ) );
+                    copy.update( value );
+
+                    field.update( this.defaults[ col ] );
+                }
+            } );
+
+            await validate( validated, columns );
+
+            this.index++;
+        };
+
         // give the form a reference to the fields
         var reference = ( field ) =>
         {
-            var name = field.name || field.value.toUpperCase();
-            form.fields[ composite.name ][ `${ name }.${ field.row }` ] = field;
+            var name = field.name || field.type.toUpperCase();
+            form.fields[ composite.name ][ name ] = { field: field, col: field.col.index, row: field.row.index };
         };
 
         // render each column in row and append field
@@ -109,11 +138,11 @@ export function Composite( args )
                     headings.appendChild( labels[ d.field.col ] );
 
                     if ( composite.config.numbers !== false )
-                        headings.appendChild( Utils.create( "table-number" ) );
+                        headings.prepend( Utils.create( "table-number" ) );
 
                     let parent = this.element.parentNode;
                         parent.insertBefore( headings, this.element );
-                    
+
                     composite.label( d.field.col, d.field.label );
                 }
                 else
@@ -135,13 +164,60 @@ export function Composite( args )
             } );
         };
 
-        this.table = table;
+        var validate = async ( validated, columns ) =>
+        {
+            var valid = validated.every( bool => bool );
+
+            // append the columns in the same order as the fields are defined
+            if ( valid )
+            {
+                let data = await this.add( columns );
+                    data.map( d => this.element.appendChild( d.element ) );
+            }
+
+            return valid;
+        };
+
+        // TODO: implement option
+        // public functions
+        this.array = async ( array ) =>
+        {
+            // source: array of columns [ [ col array ], [ col array ], ... ]
+
+            // todo: data populates first row
+            var rows = [];
+            var cols = [];
+
+            array.forEach( ( column, c ) => cols[ c ] = column );
+
+            cols.forEach( ( array ) =>
+            {
+                rows = [];
+
+                array.forEach( ( item, c ) => rows.push( cols.map( ( col, i ) => cols[ i ][ c ] ) ) );
+            } );
+
+            for ( let row of rows )
+                await populate( row );
+        };
+
+        this.add = async ( columns ) =>
+        {
+            this.table.row.create();
+
+            var promises = [];
+
+            columns.forEach( ( args, index ) => promises.push( this.table.row.col.add( args, index ) ) );
+
+            return Promise.all( promises );
+        };
 
         // initialize the row
         this.create = () =>
         {
             this.index = this.table.rows.length;
             this.element = Utils.create( "table-row" );
+            this.element.setAttribute( "data-row", this.index );
             if ( !this.index && composite.config.add == true  )
                 this.element.classList.add( "table-add" );
             if ( this.index && composite.config.hover == true  )
@@ -155,7 +231,7 @@ export function Composite( args )
             {
                 cols: this.cols,
                 element: this.element,
-                row: this.index
+                index: this.index
             };
 
             this.table.rows.push( data );
@@ -163,7 +239,7 @@ export function Composite( args )
             this.table.element.appendChild( this.element );
 
             if ( composite.config.numbers !== false )
-                this.number();
+                number();
         };
 
         // this runs once upon initialization
@@ -174,7 +250,7 @@ export function Composite( args )
             render( data );
 
             // sort the columns because they are created asynchronously
-            this.cols.sort( ( a, b ) => a.col > b.col ? 1 : -1 );
+            this.cols.sort( ( a, b ) => a.col.index > b.col.index ? 1 : -1 );
 
             // set the column headings, fields and defaults
             this.cols.forEach( col => this.defaults.push( Utils.copy( col.field.value ) ) );
@@ -182,9 +258,9 @@ export function Composite( args )
 
         this.delete = ( field ) =>
         {
-            field.data.splice( field.row, 1 );
+            field.data.splice( field.row.index, 1 );
 
-            var index = composite.table.rows.findIndex( row => row.row == field.row );
+            var index = composite.table.rows.findIndex( row => row.index == field.row.index );
 
             composite.table.rows.splice( index, 1 );
 
@@ -192,55 +268,14 @@ export function Composite( args )
         };
 
         // populate the next dummy row
-        this.next = async () =>
+        this.next = async () => await populate( [] );
+
+        this.option = async ( field ) =>
         {
-            this.index++;
+            var array = new Array( field.row.cols.length );
+                array[ field.row.index ] = field.selected.value;
 
-            var columns = [];
-            var validated = [];
-            var values = [];
-
-            this.fields.forEach( ( field, col ) =>
-            {
-                // disconnect reference to objects
-                var value = Utils.copy( field.value );
-                var copy = Object.assign( {}, field );
-                    copy.value = value;
-                var valid = copy.validate();
-
-                validated.push( valid );
-                values.push( { [ copy.name ]: copy.value } );
-
-                if ( valid )
-                {
-                    //console.log( this, composite );
-                    columns.push( new composite.Col( copy ) );
-
-                    // reset the field to default value
-                    field.update( Utils.copy( this.defaults[ col ] ) );
-                }
-            } );
-
-            var valid = validated.every( bool => bool );
-
-            // append the columns in the same order as the fields are defined
-            if ( valid )
-            {
-                let data = await add( columns );
-                    data.map( d => this.element.appendChild( d.element ) );
-
-                let event = new CustomEvent( "next", { detail: { row: this.index, values: values } } );
-
-                composite.element.dispatchEvent( event );
-            }
-        };
-
-        this.number = () =>
-        {
-            var div = Utils.create( "table-number" );
-                div.innerText = this.index;
-
-            this.element.prepend( div );
+            this.array( array );
         };
 
         this.remove = ( element ) =>
@@ -248,6 +283,8 @@ export function Composite( args )
             var node = Utils.bubble( element, "table-row" );
                 node.remove();
         };
+
+        this.table = table;
 
         //this.reorder = () => {};
 
@@ -301,11 +338,11 @@ export function Composite( args )
                         break;
 
                         case "handlers":
-                            col[ prop ].map( data => new this.Handler( data ) );
+                            col[ prop ] = col[ prop ].map( data => new this.Handler( data ) );
                         break;
 
                         case "options":
-                            col[ prop ].map( data => new this.Option( data ) );
+                            col[ prop ] = col[ prop ].map( data => new this.Option( data.text, data.value ) );
                         break;
 
                         case "source":
@@ -324,7 +361,7 @@ export function Composite( args )
     // add / delete row with click
     this.action = ( field ) =>
     {
-        if ( !field.row )
+        if ( !field.row.index )
             this.table.row.next();
         else
             this.table.row.delete( field );
@@ -387,14 +424,14 @@ export function Composite( args )
         this.data = [];
         this.table = new Table();
         this.element = this.table.element;
+        this.table.row.define( await this.table.row.add( normalize( columns ) ) );
+        this.source =
+        {
+            array: this.table.row.array,
+            option: this.table.row.option,
+        };
 
-        var data = await add( normalize( columns ) );
-
-        this.table.row.define( data );
-
-        var event = new Event( "loaded" );
-
-        this.element.dispatchEvent( event );
+        return true;
     };
 
     this.label = ( col, value ) => labels[ col ].innerText = value;

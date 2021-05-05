@@ -8,12 +8,13 @@ export function Container( args )
 
     var scope = this;
     var form = args.form;
+    var contents = Utils.create( "form-contents" );
     var container = Utils.create( "form-container" );
+        container.appendChild( contents );
     var title = Utils.create( "formtitle" );
         title.innerText = this.title;
-        title.addEventListener( "click", collapse, false );
+        title.addEventListener( "click", toggle, false );
     var element = Utils.create( "form-tabs" );
-    var contents = Utils.create( "form-contents" );
     var tabs = {};
     var data =
     {
@@ -23,26 +24,111 @@ export function Container( args )
         tabs: {}
     };
 
+    this.parent = args.parent;
     this.element = Utils.create( "form" );
-    if ( this.title )
-        this.element.appendChild( title );
     this.element.appendChild( container );
 
-    if ( scope.format !== "box" )
-        container.appendChild( element );
+    // add title
+    if ( this.title )
+        this.element.prepend( title );
 
-    container.appendChild( contents );
-    
+    // collapse
     if ( this.collapsed )
     {
         container.classList.add( "hide" );
         title.classList.add( "formcollapsed" );
     }
 
-    this.parent = args.parent;
-    this.parent.appendChild( this.element );
+    // do not add tabs
+    if ( [ "box", "popup" ].every( format => this.format !== format ) )
+        container.appendChild( element );
 
-    const Tab = function( args )
+    if ( this.format !== "popup" )
+        this.parent.appendChild( this.element );
+    else
+    {
+        this.popup = new Popup( this.element );
+
+        this.parent.appendChild( this.popup.element );
+    }
+
+    // private functions and constructors
+    function toggle()
+    {
+        container.classList.toggle( "hide" );
+        title.classList.toggle( "formcollapsed" );
+    }
+
+    function select()
+    {
+        for ( let i = 0; i < data.elements.length; i++ )
+        {
+            let tab = data.elements[ i ];
+                tab.classList.remove( "form-tab-selected" );
+
+            let content = data.contents[ tab.getAttribute( "data-name" ) ];
+                content.classList.add( "hide" );
+
+            if ( data.names[ i ].selected )
+            {
+                tab.classList.add( "form-tab-selected" );
+                content.classList.remove( "hide" );
+            }
+        }
+    }
+
+    function Popup( form )
+    {
+        this.name = scope.title;
+
+        var close = document.createElement( "div" );
+            close.classList.add( "formswitch" );
+            close.classList.add( "formright" );
+            close.innerText = "x";
+            close.addEventListener( "click", () => this.destroy(), false );
+
+        var bar = document.createElement( "div" );
+            bar.appendChild( close );
+
+        form.prepend( bar );
+
+        var popup = document.querySelector( `[ data-popup = "${ this.name }" ]` ) || document.createElement( "div" );
+            popup.setAttribute( "data-popup", this.name );
+            popup.classList.add( "popup" );
+            popup.innerHTML = null;
+            popup.appendChild( form );
+
+        this.destroy = () => form.parentNode.remove();
+        this.element = popup;
+        this.x = 0;
+        this.y = 0;
+
+        // TODO: position popup
+        /*this.init = () =>
+        {
+            var abox = target.getBoundingClientRect();
+            var bbox = popup.getBoundingClientRect();
+            var x = abox.left + abox.width;
+            var y = abox.top + abox.height;
+            var left = x <= window.innerWidth ? x - ( abox.width + bbox.width ) : window.innerWidth - x;
+            var top = Math.min( Math.max( 0, y - bbox.height ), window.innerHeight - bbox.height );
+
+            this.x = left;
+            this.y = top;
+
+            this.position();
+        };
+
+        this.position = () =>
+        {
+            var px = "px";
+
+            popup.style.left = this.x + px;
+            popup.style.top = this.y + px;
+        };*/
+    }
+
+    function Tab( args )
     {
         var click = function( name )
         {
@@ -75,33 +161,9 @@ export function Container( args )
         contents.appendChild( content );
 
         select();
-        
+
         this.tab = tab;
         this.content = content;
-    };
-
-    function collapse()
-    {
-        container.classList.toggle( "hide" );
-        title.classList.toggle( "formcollapsed" );
-    }
-
-    function select()
-    {
-        for ( let i = 0; i < data.elements.length; i++ )
-        {
-            let tab = data.elements[ i ];
-                tab.classList.remove( "form-tab-selected" );
-
-            let content = data.contents[ tab.getAttribute( "data-name" ) ];
-                content.classList.add( "hide" );
-
-            if ( data.names[ i ].selected )
-            {
-                tab.classList.add( "form-tab-selected" );
-                content.classList.remove( "hide" );
-            }
-        }
     }
 
     // public methods
@@ -120,6 +182,22 @@ export function Container( args )
         };
 
         form.composite = tabs[ args.name ].composite;
+    };
+
+    this.collapse = ( bool ) =>
+    {
+        this.collapsed = bool;
+
+        if ( bool )
+        {
+            container.classList.add( "hide" );
+            title.classList.add( "formcollapsed" );
+        }
+        else
+        {
+            container.classList.remove( "hide" );
+            title.classList.remove( "formcollapsed" );
+        }
     };
 
     this.remove =
@@ -151,6 +229,10 @@ export function Container( args )
             }
         },
 
+        form: () => form.remove(),
+
+        popup: () => this.popup.destroy(),
+
         tab: ( tab ) =>
         {
             var name = tab.name || this.selected;
@@ -169,8 +251,10 @@ export function Container( args )
 
     this.select = ( name ) =>
     {
-        var i = data.names.findIndex( tab => tab.name == name );
-        data.names[ i ].selected = true;
+        data.names.map( tab => tab.selected = false );
+
+        var tab = data.names.find( tab => tab.name == name );
+            tab.selected = true;
 
         this.selected = name;
 

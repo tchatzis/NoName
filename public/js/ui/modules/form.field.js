@@ -35,6 +35,7 @@ function Field( args )
             Components.input.call( this );
         break;
 
+        case "buttons":
         case "click":
         case "color":
         case "combo":
@@ -87,8 +88,7 @@ function Field( args )
     {
         // set handlers on other element
         case "click":
-            // TODO: test click
-            console.warn( this );
+            this.action = this.form.composite.action;
         break;
 
         case "match":   // because the target is the button and not the input
@@ -104,6 +104,7 @@ function Field( args )
     // update value of field and input
     switch( this.type )
     {
+        case "buttons":
         case "click":
         case "color":
         case "cycle":
@@ -116,7 +117,7 @@ function Field( args )
         default:
             this.update = ( value ) =>
             {
-                this.data[ this.row ][ this.name ] = value;
+                this.data[ this.row.index ][ this.name ] = value;
                 this.value = value;
                 this.element.value = value;
             };

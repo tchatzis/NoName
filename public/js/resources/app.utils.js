@@ -367,7 +367,7 @@ const Utils = function()
             else
             {
                 app[ scope ].fps = Math.round( total / ( sample - delay ) );
-                console.warn( `${ app[ scope ].fps } fps` );
+                console.info( `${ app[ scope ].fps } fps` );
 
                 var event = new Event( "framerate" );
                 document.dispatchEvent( event );

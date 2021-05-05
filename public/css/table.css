@@ -2,6 +2,7 @@
 {
     display: table;
     border-spacing: 2px;
+    border-collapse: collapse;
     pointer-events: auto;
 }
 
@@ -31,15 +32,15 @@
 .table-number
 {
     color: #666;
+    cursor: "move";
     font-size: 1.2em;
-    max-width: 25px;
-    text-align: right;
+    width: 25px;
 }
 
 /* lipstick */
 .table-add
 {
-    background-color: #033;
+    border-bottom: 1px solid #333;
 }
 
 .table-border

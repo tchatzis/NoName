@@ -219,7 +219,7 @@ input:disabled
     white-space: nowrap;
     text-align: left;
     background-color: black;
-    min-width: 80px;
+    min-width: 60px;
 }
 
 .formlink
@@ -287,6 +287,18 @@ input:disabled
     transition: height 0.5s ease-out;
 }
 
+.formspan
+{
+    color: silver;
+    font-size: 14px;
+    padding: 0 5px 0 5px;
+    height: 21px;
+    line-height: 21px;
+    pointer-events: auto;
+    margin-right: 2px;
+}
+
+
 .formswitch
 {
     cursor: pointer;
@@ -316,8 +328,8 @@ input:disabled
 .form-tab
 {
     border: 1px solid #333;
-    border-bottom: 1px solid transparent;
-    border-radius: 4px 4px 0 0;
+    border-top: 1px solid transparent;
+    border-radius: 0 0 4px 4px;
     color: #666;
     display: inline-block;
     padding: 5px 10px 5px 5px;

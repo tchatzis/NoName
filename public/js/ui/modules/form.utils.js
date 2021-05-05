@@ -52,6 +52,9 @@ const Utils =
         {
             var options = [];
 
+            if ( !source )
+                throw( `"${ args.type }" source is not defined` );
+
             var response = await app.getters[ source.type ]( source );
                 response.data.forEach( item => options.push( new this.composite.Option( item[ source.key ] ) ) );
 
@@ -69,16 +72,24 @@ const Utils =
                 args.value = args.value || "000000";
             break;
 
+            case "buttons":
             case "combo":
             case "cycle":
-            case "label":
             case "select":
             case "tree":
                 args.value = args.value || "";
                 args.options = args.options || await options( args.source );
             break;
 
+            case "label":
             case "match":
+            case "readonly":
+            case "submit":
+            case "text":
+            break;
+
+            case "number":
+                args.value = Utils.validate( { type: args.type, value: args.value } ) ? Number( args.value ) : 0;
             break;
 
             case "object":
@@ -92,6 +103,10 @@ const Utils =
 
             case "vector":
                 args.value = args.value || { x: 0, y: 0, z: 0 };
+            break;
+
+            default:
+                throw( `"${ args.type }" type is not defined` );
             break;
         }
 
@@ -135,24 +150,28 @@ const Utils =
         };
 
         if ( !is[ field.type ] )
-            throw( field.type );
+            throw( `${ field.type } validation is not defined` );
 
-        var element = Utils.bubble( field.element, "table-cell" );
         var valid = is[ field.type ]();
 
-        if ( !valid )
+        if ( field.element )
         {
-            field.element.focus();
+            let element = Utils.bubble( field.element, "table-cell" );
 
-            element.classList.add( "forminvalid" );
-        }
-        else
-        {
-            let event = new CustomEvent( "valid", { detail: field } );
+            if ( !valid )
+            {
+                field.element.focus();
 
-            field.element.dispatchEvent( event );
+                element.classList.add( "forminvalid" );
+            }
+            else
+            {
+                let event = new CustomEvent( "valid", { detail: field } );
 
-            element.classList.remove( "forminvalid" );
+                field.element.dispatchEvent( event );
+
+                element.classList.remove( "forminvalid" );
+            }
         }
 
         return valid;
