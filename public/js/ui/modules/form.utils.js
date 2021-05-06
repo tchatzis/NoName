@@ -56,7 +56,7 @@ const Utils =
                 throw( `"${ args.type }" source is not defined` );
 
             var response = await app.getters[ source.type ]( source );
-                response.data.forEach( item => options.push( new this.composite.Option( item[ source.key ] ) ) );
+                response.data.forEach( item => options.push( new this.composite.Option( { text: item[ source.key ] } ) ) );
 
             return options;
         }.bind( this );

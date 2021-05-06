@@ -40,7 +40,7 @@ export const Components =
                 else
                     values.delete( value );
             }
-        }
+        };
 
         this.required = true;
 
@@ -65,7 +65,12 @@ export const Components =
                     item.classList.add( "formlink" );
                     item.style.textAlign = "left";
                     item.addEventListener( "click", () => field.update( option.text ), false );
+                if ( option.disabled )
+                    item.classList.add( "formdisabled" );
+                if ( option.selected )
+                    item.classList.add( "formselected" );
 
+                option.element = item;
                 this.element.appendChild( item );
             } );
         };
@@ -88,9 +93,9 @@ export const Components =
         this.render();
         this.update( this.value );
 
-        function select( value )
+        function select( text )
         {
-            return field.options.find( option => option.text == value );
+            return field.options.find( option => option.text == text );
         }
 
         function state()
@@ -436,9 +441,13 @@ export const Components =
                 item.text = option.text;
                 item.value = option.value;
 
-            if ( option.text == this.value || option.value == this.value )
+            var predicate = option.text == this.value || option.value == this.value;
+
+            if ( predicate )
                 item.setAttribute( "selected", "" );
 
+            option.selected = predicate;
+            option.element = item;
             parent.appendChild( item );
         } );
     },
@@ -599,7 +608,7 @@ export const Components =
 
         function state( label, value )
         {
-            var spans = items.querySelectorAll( "span" )
+            var spans = items.querySelectorAll( "span" );
                 spans.forEach( span => span.classList.remove( "formselected" ) );
 
             if ( field.value == value )

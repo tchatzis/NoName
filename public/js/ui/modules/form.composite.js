@@ -24,6 +24,15 @@ export function Composite( args )
             if ( composite.config.borders == true )
                 element.classList.add( "table-border" );
 
+            var local =
+            {
+                break: args.break,
+                hide: args.hide
+            };
+
+            delete args.break;
+            delete args.hide;
+
             args.col = { index: index };
             args.data = composite.data;
             args.id = `${ composite.name }.${ this.row.index }.${ args.name || args.type }`;
@@ -31,24 +40,23 @@ export function Composite( args )
             args.row = { index: this.row.index };
 
             this.field = await Utils.invoke.call( form, args );
-            this.field.row =
+            this.field.row = Object.assign(
             {
-                index: this.row.index,
                 cols: this.row.cols,
+                index: this.row.index,
                 validate: this.row.validate
-            };
+            }, local );
 
             if ( args.name )
                 composite.data[ this.row.index ][ args.name ] = this.field.value;
 
             var data =
             {
-                break: args.break,
-                col: { index: index },
+                col: args.col,
                 element: element,
                 field: this.field,
-                row: { index: this.row.index }
-            }
+                row: args.row
+            };
 
             this.row.cols.push( data );
 
@@ -114,10 +122,15 @@ export function Composite( args )
 
             this.fields = data.map( d =>
             {
-                if ( d.break )
+                d.element.setAttribute( "data-col", d.field.col.index );
+
+                if ( d.field.row.break )
                 {
                     let row = Utils.create( "table-row" );
                         row.appendChild( d.element );
+                        row.setAttribute( "data-row", d.field.row.index );
+                    if ( d.field.row.hide )
+                        row.classList.add( "hide" );
 
                     let parent = this.element.parentNode;
                         parent.appendChild( row );
@@ -132,10 +145,14 @@ export function Composite( args )
                 // add headings
                 if ( !count && composite.config.headings !== false )
                 {
-                    labels[ d.field.col ] = Utils.create( "table-heading" );
+                    labels[ d.field.col.index ] = Utils.create( "table-heading" );
+                    labels[ d.field.col.index ].setAttribute( "data-label", d.field.col.index );
 
                     headings = Utils.create( "table-row" );
-                    headings.appendChild( labels[ d.field.col ] );
+                    headings.appendChild( labels[ d.field.col.index ] );
+                    headings.setAttribute( "data-heading", d.field.row.index );
+                    if ( d.field.row.hide )
+                        headings.classList.add( "hide" );
 
                     if ( composite.config.numbers !== false )
                         headings.prepend( Utils.create( "table-number" ) );
@@ -143,16 +160,16 @@ export function Composite( args )
                     let parent = this.element.parentNode;
                         parent.insertBefore( headings, this.element );
 
-                    composite.label( d.field.col, d.field.label );
+                    composite.label( d.field.col.index, d.field.label );
                 }
                 else
                 {
                     if ( d.field.label )
                     {
-                        labels[ d.field.col ] = Utils.create( "table-heading" );
-                        headings.appendChild( labels[ d.field.col ] );
+                        labels[ d.field.col.index ] = Utils.create( "table-heading" );
+                        headings.appendChild( labels[ d.field.col.index ] );
 
-                        composite.label( d.field.col, d.field.label );
+                        composite.label( d.field.col.index, d.field.label );
                     }
                 }
 
@@ -342,7 +359,7 @@ export function Composite( args )
                         break;
 
                         case "options":
-                            col[ prop ] = col[ prop ].map( data => new this.Option( data.text, data.value ) );
+                            col[ prop ] = col[ prop ].map( data => new this.Option( data ) );
                         break;
 
                         case "source":
@@ -384,7 +401,7 @@ export function Composite( args )
                         let keys = Object.keys( data );
                             keys.splice( keys.indexOf( source.key ), 1 );
                             keys.sort();
-                            keys.forEach( name => options.push( new this.Option( name, data[ name ] ) ) );
+                            keys.forEach( name => options.push( new this.Option( { text: name, value: data[ name ] } ) ) );
                     }
 
                     return options;
@@ -428,7 +445,7 @@ export function Composite( args )
         this.source =
         {
             array: this.table.row.array,
-            option: this.table.row.option,
+            option: this.table.row.option
         };
 
         return true;

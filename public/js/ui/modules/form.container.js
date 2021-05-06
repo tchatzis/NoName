@@ -19,8 +19,8 @@ export function Container( args )
     var data =
     {
         contents: {},
-        elements: [],
-        names: [],
+        elements: new Set(),
+        names: new Set(),
         tabs: {}
     };
 
@@ -61,17 +61,18 @@ export function Container( args )
 
     function select()
     {
-        for ( let i = 0; i < data.elements.length; i++ )
+        for ( let i = 0; i < data.elements.size; i++ )
         {
-            let tab = data.elements[ i ];
+            let tab = Array.from( data.elements )[ i ];
                 tab.classList.remove( "form-tab-selected" );
 
             let content = data.contents[ tab.getAttribute( "data-name" ) ];
                 content.classList.add( "hide" );
 
-            if ( data.names[ i ].selected )
+            if ( Array.from( data.names )[ i ].selected )
             {
                 tab.classList.add( "form-tab-selected" );
+                tab.classList.remove( "hide" );
                 content.classList.remove( "hide" );
             }
         }
@@ -132,11 +133,8 @@ export function Container( args )
     {
         var click = function( name )
         {
-            data.names.forEach( obj => obj.selected = false );
-
-            var index = Number( tab.dataset.index );
-
-            data.names[ index ].selected = true;
+            Array.from( data.names ).forEach( obj => obj.selected = false );
+            Array.from( data.names )[ Number( tab.dataset.index ) ].selected = true;
 
             scope.select( name );
         };
@@ -144,15 +142,15 @@ export function Container( args )
         var tab = element.querySelector( `[ data-name = "${ args.name }" ]` ) || Utils.create( "form-tab" );
             tab.innerText = args.name;
             tab.setAttribute( "data-name", args.name );
-            tab.setAttribute( "data-index", data.elements.length );
+            tab.setAttribute( "data-index", data.elements.size );
             tab.onclick = () => click( args.name );
 
         var content = contents.querySelector( `[ data-name = "${ args.name }" ]` ) || Utils.create( "form-content" );
             content.setAttribute( "data-name", args.name );
 
         data.contents[ args.name ] = content;
-        data.elements.push( tab );
-        data.names.push( { name: args.name, child: !!args.child || !data.elements.length, selected: !!args.selected || data.elements.length == 1 } );
+        data.elements.add( tab );
+        data.names.add( { name: args.name, child: !!args.child || !data.elements.size, selected: !!args.selected || data.elements.size == 1 } );
         data.tabs[ args.name ] = tab;
 
         if ( scope.format !== "box" )
@@ -204,9 +202,10 @@ export function Container( args )
     {
         children: () =>
         {
+            console.warn( "remove chldren" );
             var length = data.names.length - 1;
 
-            data.names.forEach( ( tab, i ) =>
+            Array.from( data.names ).forEach( tab =>
             {
                 tab.selected = !tab.child;
 
@@ -216,15 +215,16 @@ export function Container( args )
                     this.select( tab.name );
             } );
 
-            // update names and elements arrays
+            // update names and elements sets
             for ( let i = length; i > 0; i-- )
             {
-                let tab = data.names[ i ];
+                let tab = Array.from( data.names )[ i ];
 
                 if ( tab.child )
                 {
-                    data.elements.splice( i, 1 );
-                    data.names.splice( i, 1 );
+                    data.elements.delete( tab );
+                    //data.names.splice( i, 1 );
+                    data.names.delete( tab );
                 }
             }
         },
@@ -233,30 +233,22 @@ export function Container( args )
 
         popup: () => this.popup.destroy(),
 
-        tab: ( tab ) =>
+        tab: ( name ) =>
         {
-            var name = tab.name || this.selected;
-
-            // remove tab elements
-            tabs[ name ].elements.tab.remove();
-            tabs[ name ].elements.content.remove();
-
-            // remove data
-            delete data.contents[ name ];
-            delete data.tabs[ name ];
-            delete tabs[ name ];
-            delete form.contents[ name ];
+            tabs[ name ].elements.tab.classList.add( "hide" );
+            tabs[ name ].elements.content.classList.add( "hide" );
         }
     };
 
     this.select = ( name ) =>
     {
-        data.names.map( tab => tab.selected = false );
+        Array.from( data.names ).map( tab => tab.selected = false );
 
-        var tab = data.names.find( tab => tab.name == name );
+        var tab = Array.from( data.names ).find( tab => tab.name == name );
             tab.selected = true;
 
         this.selected = name;
+        this.collapse( false );
 
         form.composite = tabs[ name ].composite;
 

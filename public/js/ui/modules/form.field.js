@@ -66,20 +66,38 @@ function Field( args )
                     if ( this.attributes.hasOwnProperty( attr ) )
                         this.element.setAttribute( attr, this.attributes[ attr ] );
         },
+        
+        disabled: ( text, bool ) =>
+        {
+            var action = bool ? "add" : "remove";
+            var item = this.options.find( option => option.text == text ).element;
+                item.classList[ action ]( "formdisabled" );
+        },
 
         handlers: () =>
         {
             this.handlers.forEach( type =>
             {
-                this.element.removeEventListener( type.event, () => type.handler( this ), false )
+                this.element.removeEventListener( type.event, () => type.handler( this ), false );
                 this.element.addEventListener( type.event, () => type.handler( this ), false );
             } );
         },
 
-        visibility: () =>
+        hidden: () =>
         {
             if ( this.hidden === true )
                 this.element.parentNode.classList.add( "hide" );
+        },
+
+        visibility: ( bool ) =>
+        {
+            var action = bool ? "remove" : "add";
+
+            var row = Utils.bubble( this.element, "table-row" );
+                row.classList[ action ]( "hide" );
+
+            var heading = row.previousSibling;
+                heading.classList[ action ]( "hide" );
         }
     };
 
@@ -127,7 +145,7 @@ function Field( args )
     this.validate = () => Utils.validate( this );
 
     this.set.attributes();
-    this.set.visibility();
+    this.set.hidden();
 }
 
 export { Field };

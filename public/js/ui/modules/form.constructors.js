@@ -15,6 +15,7 @@ export const Constructors = function()
         this.break = !!args.break;
         this.col = args.col || 0;
         this.handlers = args.handlers || [];
+        this.hide = ( args.hide == true );
         this.label = args.label || args.name;
         this.required = ( args.required !== false );
         this.row = args.row || 0;
@@ -79,10 +80,16 @@ export const Constructors = function()
         this.handler = args.handler || console.warn( this.event, "event is not defined" );
     };
 
-    this.Option = function( text, value )
+    this.Option = function( args )
     {
-        this.text = text;
-        this.value = typeof value == "undefined" ? text : value;
+        this.text = args.text;
+        this.value = typeof args.value == "undefined" ? args.text : args.value;
+
+        if ( args.disabled )
+            this.disabled = args.disabled;
+
+        if ( args.selected )
+            this.selected = args.selected;
     };
 
     this.Source = function( args )
