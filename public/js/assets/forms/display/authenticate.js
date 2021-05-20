@@ -1,8 +1,12 @@
-UI.forms =
+export default function()
 {
-    display:
+    var scope = this;
+    var firebase = window.firebase;
+    
+    this.display =
     {
-        createUser: function( success )
+        authenticate: function(){ return true },
+        create: function( success )
         {
             var denied = function( error )
             {
@@ -14,8 +18,8 @@ UI.forms =
             var form = document.createElement( "div" );
                 form.classList.add( "form" );
                 form.appendChild( message );
-            var email = new UI.forms.Wrapper( form, "email" );
-            var password = new UI.forms.Wrapper( form, "password" );
+            var email = new Wrapper( form, "email" );
+            var password = new Wrapper( form, "password" );
             var button = document.createElement( "input" );
                 button.type = "button";
                 button.value = "Create";
@@ -27,7 +31,7 @@ UI.forms =
                         password: password.input.value
                     };
 
-                    UI.forms.process.createUser( data, success, denied );
+                    scope.process.create( data, success, denied );
                 }, false );
 
             form.appendChild( button );
@@ -40,26 +44,26 @@ UI.forms =
             {
                 message.innerText = error.code;
             };
-            
+
             var message = document.createElement( "div" );
                 message.innerText = "Please log in";
             var form = document.createElement( "div" );
                 form.classList.add( "form" );
                 form.appendChild( message );
-            var email = new UI.forms.Wrapper( form, "email" );
-            var password = new UI.forms.Wrapper( form, "password" );
+            var email = new Wrapper( form, "email" );
+            var password = new Wrapper( form, "password" );
             var button = document.createElement( "input" );
                 button.type = "button";
                 button.value = "Sign In";
-                button.addEventListener( "click", () => 
+                button.addEventListener( "click", () =>
                 {
-                    var data = 
+                    var data =
                     {
                         email: email.input.value,
                         password: password.input.value
                     };
-                    
-                    UI.forms.process.login( data, denied );
+
+                    scope.process.login( data, denied );
                 }, false );
 
             form.appendChild( button );
@@ -71,15 +75,15 @@ UI.forms =
             var button = document.createElement( "input" );
                 button.type = "button";
                 button.value = "Sign Out";
-                button.addEventListener( "click", UI.forms.process.logout, false );
+                button.addEventListener( "click", scope.process.logout, false );
 
             return button;
         }
-    },
+    };
 
-    process:
+    this.process =
     {
-        checkAuth: function()
+        authenticate: function()
         {
             this.ui.modal.innerHTML = null;
 
@@ -93,31 +97,31 @@ UI.forms =
                         name: auth.displayName,
                         token: auth.refreshToken
                     };
-        
+
                     success( user );
                 }
                 else
                 {
-                    var form = UI.forms.display.login( success );
-        
+                    var form = scope.display.login( success );
+
                     this.ui.modal.appendChild( form );
                 }
             } );
-        
+
             var success = function( user )
             {
                 this.user = user;
-    
+
                 this.ui.modal.innerHTML = null;
                 this.ui.modal.classList.add( "hide" );
 
                 this.init();
-                this.ui.toolbar.append( { icon: 128274, title: "Sign Out", action: UI.forms.process.logout } );
+                this.ui.toolbar.append( { icon: 128274, title: "Sign Out", action: scope.process.logout } );
             }.bind( this );
-        },        
-        createUser: function( data, success, denied )
+        },
+        create: function( data, success, denied )
         {
-            firebase.auth().createUserWithEmailAndPassword( data.email, data.password )
+            firebase.auth().createWithEmailAndPassword( data.email, data.password )
                 /*.then( ( userCredential ) =>
                 {
                     var user =
@@ -141,9 +145,9 @@ UI.forms =
             firebase.auth().signOut();
             window.location.reload();
         }
-    },
+    };
 
-    Wrapper: function( form, type, value )
+    const Wrapper = function( form, type, value )
     {
         this.input = document.createElement( "input" );
         this.input.type = type;
@@ -159,5 +163,5 @@ UI.forms =
             div.appendChild( this.input );
 
         form.appendChild( div );
-    }
+    };
 };

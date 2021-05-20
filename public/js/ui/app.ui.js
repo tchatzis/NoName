@@ -1,15 +1,16 @@
-const UI = function()
+export default function()
 {
-    var scope = "ui";
-    var app = this;
-        app[ scope ] = {};
-
+    var scope = this;
     var elements = function()
     {
         return {
             modal:
             {
                 el: document.getElementById( "modal" )
+            },
+            modal_label:
+            {
+                el: document.getElementById( "modal_label" )
             },
             modal_progress:
             {
@@ -66,6 +67,7 @@ const UI = function()
         var code = String.fromCodePoint( data.icon );
         //var string = data.icon.charCodeAt( 0 );
 
+        // TODO: icon data
         console.log( data.icon, code );
 
         var button = document.createElement( "div" );
@@ -74,7 +76,7 @@ const UI = function()
             button.title = data.title;
             button.addEventListener( "click", function()
             {
-                var bbox = this.getBoundingClientRect();
+                var bbox = scope.getBoundingClientRect();
 
                 data.action( bbox.left, data.params );
             } );
@@ -82,20 +84,20 @@ const UI = function()
         return button;
     }
 
-    app[ scope ].drop = function( left, content )
+    /*scope.drop = function( left, content )
     {
-        app[ scope ].dropdown.style.left = left + "px";
-        app[ scope ].dropdown.classList.toggle( "expand" );
-        app[ scope ].dropdown.appendChild( content );
-    };
+        scope.dropdown.style.left = left + "px";
+        scope.dropdown.classList.toggle( "expand" );
+        scope.dropdown.appendChild( content );
+    };*/
     
-    app[ scope ].toolbar =
+    scope.toolbar =
     {
-        append: ( data ) => app[ scope ].container.appendChild( button( data ) ),
-        prepend: ( data ) => app[ scope ].container.prepend( button( data ) )
+        append: ( data ) => scope.container.appendChild( button( data ) ),
+        prepend: ( data ) => scope.container.prepend( button( data ) )
     };
 
-    app[ scope ].row = function( data )
+    scope.row = function( data )
     {
         var id = data.id + "_row";
         var row = document.getElementById( id ) || document.createElement( "div" );
@@ -105,9 +107,9 @@ const UI = function()
 
         data.parent.appendChild( row );
 
-        app[ scope ][ id ] = { el: row, cl: data.cl, parent: data.parent };
+        scope[ id ] = { el: row, cl: data.cl, parent: data.parent };
 
-        return app[ scope ][ id ];
+        return scope[ id ];
     };
 
     var render = function()
@@ -134,20 +136,20 @@ const UI = function()
                     {
                         case "string":
                             data.parent = document.getElementById( data.parent );
-                            app[ scope ][ element ] = data.el;
-                            data.row = app[ scope ].row( data );
+                            scope[ element ] = data.el;
+                            data.row = scope.row( data );
                         break;
 
                         case "object":
                             data.parent.appendChild( data.el );
-                            app[ scope ][ element ] = data.el;
+                            scope[ element ] = data.el;
                         break;
                     }
                 }
                 else
                 {
                     // skip appending - element was already coded
-                    app[ scope ][ element ] = data.el;
+                    scope[ element ] = data.el;
                 }
             }
         }

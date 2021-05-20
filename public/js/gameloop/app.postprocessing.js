@@ -1,4 +1,4 @@
-const postprocessing = function()
+QT.PostProcessing = function()
 {
     this.stage.composers = {};
 
@@ -29,27 +29,27 @@ const postprocessing = function()
             enabled: true
         };
 
-        for ( var name in composers )
+    for ( var name in composers )
+    {
+        if ( composers.hasOwnProperty( name ) )
         {
-            if ( composers.hasOwnProperty( name ) )
+            if ( composers[ name ].enabled )
             {
-                if ( composers[ name ].enabled )
+                composers[ name ].passes.forEach( module =>
                 {
-                    composers[ name ].passes.forEach( module =>
+                    if ( module.enabled )
                     {
-                        if ( module.enabled )
-                        {
-                            var pass = new THREE[ module.name ]( ...module.args );
-                                pass.renderToScreen = module.render;
+                        var pass = new THREE[ module.name ]( ...module.args );
+                            pass.renderToScreen = module.render;
 
-                            composers[ name ].composer.addPass( pass );
-                            composers[ name ].texture = composers[ name ].composer.renderTarget2.texture;
-                            enabled++;
-                        }
-                    } );
+                        composers[ name ].composer.addPass( pass );
+                        composers[ name ].texture = composers[ name ].composer.renderTarget2.texture;
+                        enabled++;
+                    }
+                } );
 
-                    this.stage.composers[ name ] = composers[ name ];
-                }
+                this.stage.composers[ name ] = composers[ name ];
             }
         }
+    }
 };

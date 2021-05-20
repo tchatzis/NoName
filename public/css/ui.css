@@ -199,11 +199,12 @@
 {
     position: absolute;
     z-index: 100;
+    pointer-events: auto;
 }
 
 .pre
 {
-    color: yellow !important;
+    color: #999;
     display: block;
     unicode-bidi: embed;
     font-family: monospace;

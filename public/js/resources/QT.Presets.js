@@ -1,8 +1,6 @@
-const Presets = function()
+QT.Presets = function()
 {
-    var scope = "presets";
-    var app = this;
-        app[ scope ] = {};
+    var scope = this;
 
     var rotate = function( mesh, rotation )
     {
@@ -22,7 +20,7 @@ const Presets = function()
         this.group.visible = args.visible;
     };
     
-    app[ scope ].Beam = function( args )
+    scope.Beam = function( args )
     {
         Group.call( this, args );
 
@@ -35,12 +33,12 @@ const Presets = function()
             mesh.material.color = args.color || new THREE.Color( 0xFFFFFF );
             mesh.material.transparent = true;
 
-        Methods.call( this, app, mesh );
+        QT.Methods.call( this, app, mesh );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Cube = function( args )
+    scope.Cube = function( args )
     {
         Group.call( this, args );
 
@@ -53,12 +51,12 @@ const Presets = function()
             mesh.material.color = args.color || new THREE.Color( 0xFFFFFF );
             mesh.material.transparent = true;
 
-        Methods.call( this, app, mesh );
+        QT.Methods.call( this, app, mesh );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Cylinder = function( args )
+    scope.Cylinder = function( args )
     {
         Group.call( this, args );
 
@@ -71,12 +69,12 @@ const Presets = function()
             mesh.material.color = args.color || new THREE.Color( 0xFFFFFF );
             mesh.material.transparent = true;
 
-        Methods.call( this, app, mesh );
+        QT.Methods.call( this, app, mesh );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Dome = function( args )
+    scope.Dome = function( args )
     {
         Group.call( this, args );
 
@@ -97,12 +95,12 @@ const Presets = function()
 
         app.arrays.functions.push( { name: args.name, scope: this, function: update, args: null } );
 
-        Methods.call( this, app, mesh, THREE.BackSide );
+        QT.Methods.call( this, app, mesh, THREE.BackSide );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Environment = function( args )
+    scope.Environment = function( args )
     {
         var far = app.stage.world * 2;
 
@@ -129,23 +127,23 @@ const Presets = function()
 
         app.arrays.functions.push( { name: args.name, scope: this, function: update, args: null } );
 
-        Methods.call( this, app, mesh, THREE.BackSide );
+        QT.Methods.call( this, app, mesh, THREE.BackSide );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Group = function( args )
+    scope.Group = function( args )
     {
         Group.call( this, args );
 
         this.group.position.copy( args.position || new THREE.Vector3() );
 
-        Methods.call( this, app, {} );
+        QT.Methods.call( this, app, {} );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Plane = function( args )
+    scope.Plane = function( args )
     {
         Group.call( this, args );
 
@@ -163,12 +161,12 @@ const Presets = function()
         if ( !args.vertical )
             mesh.rotateX( -Math.PI / 2 );
 
-        Methods.call( this, app, mesh );
+        QT.Methods.call( this, app, mesh );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Rounded = function( args )
+    scope.Rounded = function( args )
     {
         Group.call( this, args );
 
@@ -207,12 +205,12 @@ const Presets = function()
             mesh.material.color = args.color || new THREE.Color( 0xFFFFFF );
             mesh.material.transparent = true;
 
-        Methods.call( this, app, mesh );
+        QT.Methods.call( this, app, mesh );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Solid = function( args )
+    scope.Solid = function( args )
     {
         Group.call( this, args );
 
@@ -225,12 +223,12 @@ const Presets = function()
         mesh.material.color = args.color || new THREE.Color( 0xFFFFFF );
         mesh.material.transparent = true;
 
-        Methods.call( this, app, mesh, args );
+        QT.Methods.call( this, app, mesh, args );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Sphere = function( args )
+    scope.Sphere = function( args )
     {
         Group.call( this, args );
 
@@ -243,12 +241,12 @@ const Presets = function()
             mesh.material.color = args.color || new THREE.Color( 0xFFFFFF );
             mesh.material.transparent = true;
 
-        Methods.call( this, app, mesh );
+        QT.Methods.call( this, app, mesh );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Spline = function( args )
+    scope.Spline = function( args )
     {
         Group.call( this, args );
 
@@ -273,12 +271,12 @@ const Presets = function()
             material.color = args.color || new THREE.Color( 0xFFFFFF );
         var line = new THREE.Line( geometry, material );
 
-        Methods.call( this, app, line );
+        QT.Methods.call( this, app, line );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Square = function( args )
+    scope.Square = function( args )
     {
         Group.call( this, args );
 
@@ -306,12 +304,12 @@ const Presets = function()
             mesh.material.color = args.color || new THREE.Color( 0xFFFFFF );
             mesh.material.transparent = true;
 
-        Methods.call( this, app, mesh );
+        QT.Methods.call( this, app, mesh );
 
         args.parent.add( this.group );
     };
 
-    app[ scope ].Tiles = function( args )
+    scope.Tiles = function( args )
     {
         Group.call( this, args );
 

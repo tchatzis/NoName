@@ -1,15 +1,13 @@
-const Record = function()
+QT.Record = function()
 {    
-    var scope = "record";
-    var app = this;
-        app[ scope ] = {};
+    var scope = this;
     var length = 0;
     var progress;
     var params = {};
     
-    app[ scope ].recordings = {};
+    app.data.recordings = {};
 
-    app[ scope ].init = function( args )
+    scope.init = function( args )
     {
         Object.assign( params, args );
 
@@ -39,13 +37,13 @@ const Record = function()
 
         length = 0;
 
-        app[ scope ].recordings[ params.name ] = { name: params.name, frames: [], length: 0 };
-        app.arrays.functions.push( { name: params.name, scope: scope, function: update, args: null } );
+        app.data.recordings[ params.name ] = { name: params.name, frames: [], length: 0 };
+        app.data.arrays.functions.push( { name: params.name, scope: scope, function: update, args: null } );
     };
 
     function update()
     {
-        if ( app.isReady() && params.record )
+        if ( app.methods.ready() && params.record )
         {
             if ( length < params.maxlength )
             {
@@ -58,17 +56,17 @@ const Record = function()
                 app.ui.hud.innerHTML = null;
                 app.ui.hud.appendChild( params.temp );
 
-                app[ scope ].recordings[ params.name ].frames.push( params.temp );
-                length = app[ scope ].recordings[ params.name ].frames.length;
+                scope.recordings[ params.name ].frames.push( params.temp );
+                length = scope.recordings[ params.name ].frames.length;
 
                 progress.update( { label: "recording", value: length } );                
             }
 
             if ( length === params.maxlength )
             {
-                app[ scope ].recordings[ params.name ].length = length;
+                scope.recordings[ params.name ].length = length;
                 app.ui.hud.innerHTML = null;
-                app.kill( app.arrays.functions, params.name );
+                app.methods.kill( app.data.arrays.functions, params.name );
 
                 if ( params.onRecordComplete )
                 {
@@ -77,9 +75,8 @@ const Record = function()
                 }
                 else
                 {
-                    var event = new Event( "recording_finished" );
-                    document.dispatchEvent( event );
                     params.record = false;
+                    app.broadcast( "recording_finished" );
                     app.ui.hud.classList.remove( "expand" );
                 }
             }

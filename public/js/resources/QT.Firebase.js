@@ -1,8 +1,6 @@
-const DB = function()
+export default function()
 {
-    var scope = "db";
-    var app = this;
-        app[ scope ] = {};
+    var scope = this;
     var config =
     {
         apiKey: "AIzaSyDWW-G627Z5gnPO4e04iZVreLoq1knqKa8",
@@ -13,11 +11,12 @@ const DB = function()
         messagingSenderId: "582446940541",
         appId: "1:582446940541:web:b0980ee31dbd80dfb10c14"
     };
-
-    firebase.initializeApp( config );
-
+    var firebase = window.firebase;
+        firebase.initializeApp( config );
     var db = firebase.firestore();
     var fv = firebase.firestore.FieldValue;
+
+    app.config.dependencies[ "firestore" ] = firebase.SDK_VERSION;
 
     function reference( params )
     {
@@ -33,29 +32,6 @@ const DB = function()
 
         return db[ type ]( path );
     }
-
-    /*function meta( data )
-    {
-        var timestamp = fv.serverTimestamp();
-
-        data.meta = data.meta || {};
-        data.meta.index = data.meta.index || 0;
-
-        if ( !data.meta.created )
-            data.meta.created = { time: timestamp, user: app.user.id };
-
-        data.meta.modified = { time: timestamp, user: app.user.id };
-    }
-
-    function hasValue( value )
-    {
-        var valid = [];
-            valid.push( value !== "" );
-            valid.push( valid !== null );
-            valid.push( valid !== undefined );
-
-        return valid.every( item => item );
-    }*/
 
     function Output( params, callback )
     {
@@ -119,27 +95,16 @@ const DB = function()
                 callback( output );
 
             return output;
-        } ).catch( app[ scope ].catch );
+        } ).catch( scope.catch );
     }
 
-    // add with generated doc id
-    /*app[ scope ].add = ( data, path, callback ) =>
-    {
-        meta( data );
+    scope.catch = ( error ) => console.error ( error );
 
-        var ref = reference( path );
-            ref.add( data ).then( callback ).catch( app[ scope ].catch );
-    };*/
-
-    //app[ scope ].unsubscribe = {};
-
-    app[ scope ].catch = ( error ) => console.error ( error );
-
-    app[ scope ].delete =
+    scope.delete =
     {
         /*collection: async ( params, callback ) =>
         {
-            var data = await app[ scope ].get( params, callback );
+            var data = await scope.get( params, callback );
 
             console.log( data );
         },*/
@@ -147,7 +112,7 @@ const DB = function()
         data: ( params, callback ) =>
         {
             var ref = reference( params );
-                ref.delete().then( callback ).catch( app[ scope ].catch );
+                ref.delete().then( callback ).catch( scope.catch );
         },
 
         field: ( params, callback ) =>
@@ -161,26 +126,77 @@ const DB = function()
         }
     };
 
-    app[ scope ].get = ( params, callback ) =>
+    scope.get = ( params, callback ) =>
     {
         var output = new Output( params, callback );
 
         return output[ params.output ]();
     };
-    
-    /*app[ scope ].max = ( key, path, limit, callback ) =>
+
+    // does not overwrite entire doc
+    scope.set = ( params, callback ) =>
     {
+        var ref = reference( params );
+
+        if ( params.map )
+            ref.update( { [ params.map ] : params.value } ).catch( scope.catch );
+        else
+            ref.set( params.value, { merge: true } ).catch( scope.catch );
+
+        var output = new Output( params, callback );
+
+        return output[ params.output ]();
+    };
+
+    // TODO: tree shake
+
+    /*function meta( data )
+    {
+        var timestamp = fv.serverTimestamp();
+
+        data.meta = data.meta || {};
+        data.meta.index = data.meta.index || 0;
+
+        if ( !data.meta.created )
+            data.meta.created = { time: timestamp, user: app.user.id };
+
+        data.meta.modified = { time: timestamp, user: app.user.id };
+    }
+
+    function hasValue( value )
+    {
+        var valid = [];
+            valid.push( value !== "" );
+            valid.push( valid !== null );
+            valid.push( valid !== undefined );
+
+        return valid.every( item => item );
+    }*/
+
+    // add with generated doc id
+    /*scope.add = ( data, path, callback ) =>
+    {
+        meta( data );
+
         var ref = reference( path );
-            ref.orderBy( key, "desc" ).limit( limit ).get().then( ( snapshot ) => callback( snapshot.docs ) ).catch( app[ scope ].catch );
+            ref.add( data ).then( callback ).catch( scope.catch );
     };*/
 
-    /*app[ scope ].min = ( key, path, limit, callback ) =>
+    //scope.unsubscribe = {};
+
+    /*scope.max = ( key, path, limit, callback ) =>
     {
         var ref = reference( path );
-            ref.orderBy( key, "asc" ).limit( limit ).get().then( ( snapshot ) => callback( snapshot.docs ) ).catch( app[ scope ].catch );
+            ref.orderBy( key, "desc" ).limit( limit ).get().then( ( snapshot ) => callback( snapshot.docs ) ).catch( scope.catch );
     };*/
 
-    /*app[ scope ].object =
+    /*scope.min = ( key, path, limit, callback ) =>
+    {
+        var ref = reference( path );
+            ref.orderBy( key, "asc" ).limit( limit ).get().then( ( snapshot ) => callback( snapshot.docs ) ).catch( scope.catch );
+    };*/
+
+    /*scope.object =
     {
         get: ( params, callback ) =>
         {
@@ -211,7 +227,7 @@ const DB = function()
         merge: ( params, data, callback ) =>
         {
             var ref = reference( params.path );
-                ref.set( data, { merge: true } ).then( () => callback( { data: data, object: params.object, path: ref.path } ) ).catch( app[ scope ].catch );
+                ref.set( data, { merge: true } ).then( () => callback( { data: data, object: params.object, path: ref.path } ) ).catch( scope.catch );
         },
         replace: ( params, data, callback ) =>
         {
@@ -220,41 +236,26 @@ const DB = function()
     };*/
 
     // save a value without a snapshot call
-    /*app[ scope ].save = ( params ) =>
+    /*scope.save = ( params ) =>
     {
         var ref = reference( params );
 
         if ( params.map )
-            ref.update( { [ params.map ] : params.value } ).catch( app[ scope ].catch );
+            ref.update( { [ params.map ] : params.value } ).catch( scope.catch );
         else
-            ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
+            ref.set( params.value, { merge: true } ).catch( scope.catch );
     };*/
     
-    /*app[ scope ].addDoc = ( params, callback ) =>
+    /*scope.addDoc = ( params, callback ) =>
     {
         var ref = reference( params );
-            ref.doc( params.key ).set( params.value ).catch( app[ scope ].catch );
+            ref.doc( params.key ).set( params.value ).catch( scope.catch );
 
         var output = new Output( ref, params, callback );
             output[ params.output ]();
     };*/
 
-    // does not overwrite entire doc
-    app[ scope ].set = ( params, callback ) =>
-    {
-        var ref = reference( params );
-
-        if ( params.map )
-            ref.update( { [ params.map ] : params.value } ).catch( app[ scope ].catch );
-        else
-            ref.set( params.value, { merge: true } ).catch( app[ scope ].catch );
-
-        var output = new Output( params, callback );
-
-        return output[ params.output ]();
-    };
-
-    /*app[ scope ].test = ( params, data, callback ) =>
+    /*scope.test = ( params, data, callback ) =>
     {
         var ref = reference( params.path );
 
@@ -262,60 +263,60 @@ const DB = function()
     };*/
 
     // statement: [ "name", "operator == ", "value" ]
-    /*app[ scope ].query = ( statement, path, callback ) =>
+    /*scope.query = ( statement, path, callback ) =>
     {
         var ref = reference( path );
-            ref.where( ...statement ).get().then( callback ).catch( app[ scope ].catch );
+            ref.where( ...statement ).get().then( callback ).catch( scope.catch );
     };*/
 
-    /*app[ scope ].query( [ "meta.created.time", "==", null ], "test", ( docs ) =>
+    /*scope.query( [ "meta.created.time", "==", null ], "test", ( docs ) =>
     {
         docs.forEach( doc =>
         {
-            app[ scope ].delete( doc.ref.path, () => console.log( doc.id ) );
+            scope.delete( doc.ref.path, () => console.log( doc.id ) );
         } );
     } );*/
 
     // returns the collection
-    /*app[ scope ].ordered = ( path, callback ) =>
+    /*scope.ordered = ( path, callback ) =>
     {
         var ref = reference( path );
             ref.orderBy( "meta.index" ).onSnapshot( callback );
     };*/
 
-    /*app[ scope ].read = ( path, callback ) =>
+    /*scope.read = ( path, callback ) =>
     {
         var ref = reference( path );
-            ref.get().then( callback ).catch( app[ scope ].catch );
+            ref.get().then( callback ).catch( scope.catch );
     };*/
 
-    /*app[ scope ].realtime = ( path, callback ) =>
+    /*scope.realtime = ( path, callback ) =>
     {
         var ref = reference( path );
             ref.onSnapshot( callback );
     };*/
 
     // removes a key
-    /*app[ scope ].remove = ( key, path, callback ) =>
+    /*scope.remove = ( key, path, callback ) =>
     {
         var ref = reference( path );
-            ref.update( { [ key ]: fv.delete() } ).then( () => callback( { removed: key, path: path } ) ).catch( app[ scope ].catch );
+            ref.update( { [ key ]: fv.delete() } ).then( () => callback( { removed: key, path: path } ) ).catch( scope.catch );
     };*/
 
     // add with set doc id
-    /*app[ scope ].set = ( key, data, path ) =>
+    /*scope.set = ( key, data, path ) =>
     {
         meta( data );
 
         var ref = reference( path );
-            ref.doc( data[ key ] ).set( data ).catch( app[ scope ].catch );
+            ref.doc( data[ key ] ).set( data ).catch( scope.catch );
     };*/
 
-    /*app[ scope ].update = ( data, path, callback ) =>
+    /*scope.update = ( data, path, callback ) =>
     {
         meta( data );
 
         var ref = reference( path );
-            ref.update( data ).then( () => callback( data ) ).catch( app[ scope ].catch );
+            ref.update( data ).then( () => callback( data ) ).catch( scope.catch );
     };*/
 };

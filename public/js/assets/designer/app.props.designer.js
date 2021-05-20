@@ -1,6 +1,5 @@
 const Designer = function()
 {
-    var app = {};
     var scope = this;
     var axes = [ "x", "y", "z" ];
     var colors =
@@ -15,7 +14,7 @@ const Designer = function()
 
     scope.init = function( args )
     {
-        Object.assign( app, this );
+        //Object.assign( app, this );
         Object.assign( scope, args );
 
         scope.groups = [];
@@ -912,6 +911,7 @@ const Designer = function()
             },
             edit: ( args ) =>
             {
+                Raycaster.selected = args;
                 Process.segments.highlight( args.group );
             },
             equal: ( position ) =>
@@ -937,11 +937,11 @@ const Designer = function()
             },
             select: ( args ) =>
             {
-                Process.group.highlight( args.group );
-
-                Raycaster.selected = { group: args.group, name: args.name, segment: args.segment };
+                Raycaster.selected = args;
                 Raycaster.fields.name.update( args.name );
                 Raycaster.fields.selected.update( args.segment );
+
+                Process.group.highlight( args.group );
             }
         },
         segments:
@@ -959,7 +959,7 @@ const Designer = function()
                     value: []
                 };
                 var fields = submit.form.composite.get.schema();
-                var option = new submit.form.composite.Option( value, [] );
+                var option = new submit.form.composite.Option( { text: value, value: [] } );
                 var labels = fields[ `segments.${ submit.row }` ];
                     labels.options.push( option );
                     labels.render();
@@ -1016,21 +1016,21 @@ const Designer = function()
                 if ( Handles.forms.points.popup )
                     Handles.forms.points.popup.destroy();
             },
-            highlight: ( group, segment ) =>
+            highlight: ( group ) =>
             {
                 Raycaster.intersects.forEach( line =>
                 {
                      Process.segments.unlight( line.parent, line.userData.segment );
                 } );
 
-                var predicate = group.visible;//Process.mode.status.points == "edit" ? group.visible && group.name == scope.current.name : group.visible;
+                var predicate = group.visible && ( group.userData.name == Raycaster.selected.name );
 
                 if ( predicate )
                     group.children.forEach( ( child ) =>
                     {
-                        if ( child.material && child.userData.segment == segment )
+                        if ( child.material && child.userData.segment == Raycaster.selected.segment )
                         {
-                            child.material.color = new THREE.Color();
+                            child.material.color = new THREE.Color( 0xFFFFFF );
                             child.material.opacity = 1;
                         }
                     } );
@@ -1076,21 +1076,19 @@ const Designer = function()
                 if ( field.selected )
                 {
                     Raycaster.selected = { group: scope.current.group, name: scope.current.name, segment: field.selected.text };
-                    Process.raycaster.select( Raycaster.selected );
+                    Process.raycaster.edit( Raycaster.selected );
 
                     Forms.points.edit( field );
                 }
             },
-            unlight: ( group, segment ) =>
+            unlight: ( group ) =>
             {
                 group.children.forEach( ( child ) =>
                 {
-                    if ( child.material && child.parent.userData.color )
-                        if ( child.userData.segment == segment )
-                        {
-                            child.material.color = new THREE.Color( child.parent.userData.color );
-                            child.material.opacity = child.userData.name == scope.current.name ? 1 : scope.settings.appearance.opacity;
-                        }
+                    var predicate = child.material && child.parent.userData.color;
+
+                    if ( predicate )
+                        child.material.color = new THREE.Color( child.parent.userData.color );
                 } );
             }
         },
@@ -1293,7 +1291,7 @@ const Designer = function()
                     form.container.add( { name: "Group Segments", child: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
                 await form.composite.init(
                     [
-                        { break: true, name: "segments", type: "buttons", multiple: false,
+                        { break: true, name: "segments", type: "buttons", settings: { multiple: false },
                             options: form.composite.from.object.to.options( { key: "name", data: data } ),
                             handlers: [ { event: "click", handler: Process.segments.select } ]
                         },
@@ -1396,11 +1394,11 @@ const Designer = function()
                     mode.container.add( { name: "Mode", selected: true, config: { add: false, borders: false, hover: false, numbers: false, headings: true } } );
                 await mode.composite.init(
                     [
-                        { name: "plot", type: "buttons", horizontal: true,
+                        { name: "plot", type: "buttons", settings: { horizontal: true },
                             options: [ { text: "3D" }, { text: "2D" } ],
                             handlers: [ { event: "click", handler: Process.mode.set } ]
                         },
-                        { break: true, name: "points", type: "buttons", value: "view", horizontal: true, hide: true,
+                        { break: true, name: "points", type: "buttons", value: "view", settings: { horizontal: true, hide: true },
                             options: [ { text: "view" }, { text: "select" }, { text: "edit", disabled: true }, { text: "add", disabled: true } ],
                             handlers: [ { event: "click", handler: Process.mode.set } ]
                         }

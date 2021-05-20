@@ -1,17 +1,5 @@
-const animate = function()
+QT.Animate = function()
 {
-    var app = this;
-        app.kill = function( array, name )
-        {
-            var index = array.findIndex( item => item.name === name );
-
-            if ( index > -1 )
-            {
-                array.splice( index, 1 );
-                app.kill( array, name );
-            }
-        };
-
     var update = function( data )
     {
         data.path = typeof data.path === 'string' ? data.path.split( '.' ) : data.path;
@@ -24,7 +12,7 @@ const animate = function()
         {
             param = data.path[ p ];
 
-            if ( current[ param ] === undefined ) return;
+            if ( typeof current[ param ] == "undefined" ) return null;
 
             if ( p === data.path.length - 1 )
             {
@@ -50,17 +38,17 @@ const animate = function()
 
     var animate = function()
     {
-        if ( !app.debug ) requestAnimationFrame( animate );
+        if ( !app.config.debug ) requestAnimationFrame( animate );
 
-        if ( app.debug )
+        if ( app.config.debug )
         {
-            console.warn( "animations", app.arrays.animations );
-            console.warn( "persistent", app.arrays.persistent );
-            console.warn( "functions", app.arrays.functions );
+            console.warn( "animations", app.data.arrays.animations );
+            console.warn( "persistent", app.data.arrays.persistent );
+            console.warn( "functions", app.data.arrays.functions );
         }
 
-        var animations = app.arrays.animations.concat( app.arrays.persistent[ "background" ] ).concat( app.arrays.persistent[ "ground" ] );
-        var functions = app.arrays.functions.concat( app.arrays.persistent[ "functions" ] );
+        var animations = app.data.arrays.animations.concat( app.data.arrays.persistent[ "background" ] ).concat( app.data.arrays.persistent[ "ground" ] );
+        var functions = app.data.arrays.functions.concat( app.data.arrays.persistent[ "functions" ] );
         var alen = animations.length;
         var flen = functions.length;
         var a = 0, f = 0;
@@ -74,7 +62,7 @@ const animate = function()
             {
                 console.error( "animation name is not defined", adata );
                 a = alen;
-                app.kill( animations, adata.name );
+                app.methods.kill( animations, adata.name );
                 break;
             }
 
@@ -95,7 +83,7 @@ const animate = function()
             {
                 console.error( "function name is not defined", fdata );
                 f = flen;
-                app.kill( functions, fdata.name );
+                app.methods.kill( functions, fdata.name );
                 break;
             }
 

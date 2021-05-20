@@ -6,8 +6,8 @@ var prop = function( name )
     {
         name: name,
         parent: this.stage.props,
-        message: "Text Sample",
-        font: this.assets.fonts[ "Arial_Regular" ].font,
+        message: "QT 3D",
+        font: this.data.assets.fonts[ "Arial_Regular" ].font,
         geometry:
         {
             size: 8,
@@ -29,7 +29,7 @@ var prop = function( name )
     this.stage.lights[ "blue" ].intensity = 20;
     this.stage.lights[ "blue" ].distance = 0;
 
-    this.arrays.animations.push( { name: name, object: this.props[ name ].group, path: "rotation.y", value: -0.01 } );
+    this.data.arrays.animations.push( { name: name, object: this.props[ name ].group, path: "rotation.y", value: -0.01 } );
 
     return this.props[ name ];
 };

@@ -1,20 +1,18 @@
-const navigation = function()
+QT.Navigation = function()
 {
-    var scope = "navigation";
-    var app = this;
-        app[ scope ] = {};
+    var scope = this;
     var visible = "lime";
     var timeout;
 
     // public
-    app[ scope ].previous = { button: null, background: {}, ground: {}, prop: null };
-    app[ scope ].current = null;
-    app[ scope ].buttons = [];
-    app[ scope ].visited = {};
+    scope.previous = { button: null, background: {}, ground: {}, prop: null };
+    scope.current = null;
+    scope.buttons = [];
+    scope.visited = {};
 
-    app[ scope ].stop = function()
+    scope.stop = function()
     {
-        var name = app[ scope ].previous.button;
+        var name = scope.previous.button;
 
         if ( app.raycaster ) app.raycaster.running = false;
         if ( app.path )      app.path.running = false;
@@ -33,36 +31,36 @@ const navigation = function()
             progress.remove();
         } );
 
-        app.arrays.videos.forEach( video =>
+        app.data.arrays.videos.forEach( video =>
         {
             video.currentTime = 0;
             video.pause();
         } );
 
-        app.arrays.videos = [];
+        app.data.arrays.videos = [];
 
         if ( name )
         {
-            app.controls.active[ name ] = false;
-            app.kill( app.arrays.animations, name );
-            app.kill( app.arrays.functions, name );
-            app.kill( app.arrays.functions, "widgets" );
+            app.config.controls.active[ name ] = false;
+            app.methods.kill( app.data.arrays.animations, name );
+            app.methods.kill( app.data.arrays.functions, name );
+            app.methods.kill( app.data.arrays.functions, "widgets" );
         }
     };
 
-    app[ scope ].reset = function()
+    scope.reset = function()
     {
-        app[ scope ].stop();
+        scope.stop();
         app.stage.props.children = [];
         app.stage.persistent.children = [];
-        app.arrays.persistent.background = [];
-        app.arrays.persistent.ground = [];
-        app.arrays.persistent.functions = [];
+        app.data.arrays.persistent.background = [];
+        app.data.arrays.persistent.ground = [];
+        app.data.arrays.persistent.functions = [];
     };
 
-    app[ scope ].replay = function()
+    scope.replay = function()
     {
-        app[ scope ].buttons.forEach( item =>
+        scope.buttons.forEach( item =>
         {
             item.parent.classList.add( "expand" );
             item.button.click();
@@ -75,27 +73,27 @@ const navigation = function()
         properties:         new Data( { label: "property explorer", id: "properties",  permanent: true,  control: true, class: "tab", action: expand, data: {
             db:             new Data( { label: "app.db",                id: "db",               hud: true, control: true, class: "menu", action: dump, data: app.db } ),
             instanced:      new Data( { label: "app.instanced",         id: "instanced",        hud: true, control: true, class: "menu", action: instanced, data: null } ),
-            lipstick:       new Data( { label: "app.lipstick",          id: "lipstick",         hud: true, control: true, class: "menu", action: dump, data: app.lipstick } ),
-            path:           new Data( { label: "app.path",              id: "path",             hud: true, control: true, class: "menu", action: dump, data: app.path } ),
-            patterns:       new Data( { label: "app.patterns",          id: "patterns",         hud: true, control: true, class: "menu", action: dump, data: app.patterns } ),
-            persexpl:       new Data( { label: "app.persistent",        id: "persexpl",         hud: true, control: true, class: "menu", action: dump, data: app.persistent } ),
-            raycaster:      new Data( { label: "app.raycaster",         id: "raycaster",        hud: true, control: true, class: "menu", action: dump, data: app.raycaster } ),
-            trajectory:     new Data( { label: "app.trajectory",        id: "trajectory",       hud: true, control: true, class: "menu", action: dump, data: app.trajectory } ),
-            textures:       new Data( { label: "app.textures",          id: "textures",         hud: true, control: true, class: "menu", action: dump, data: app.textures } ),
-            utils:          new Data( { label: "app.utils",             id: "utils",            hud: true, control: true, class: "menu", action: dump, data: app.utils } )
+            //lipstick:       new Data( { label: "app.lipstick",          id: "lipstick",         hud: true, control: true, class: "menu", action: dump, data: app.lipstick } ),
+            //path:           new Data( { label: "app.path",              id: "path",             hud: true, control: true, class: "menu", action: dump, data: app.path } ),
+            //patterns:       new Data( { label: "app.patterns",          id: "patterns",         hud: true, control: true, class: "menu", action: dump, data: app.patterns } ),
+            //persexpl:       new Data( { label: "app.persistent",        id: "persexpl",         hud: true, control: true, class: "menu", action: dump, data: app.persistent } ),
+            //raycaster:      new Data( { label: "app.raycaster",         id: "raycaster",        hud: true, control: true, class: "menu", action: dump, data: app.raycaster } ),
+            //trajectory:     new Data( { label: "app.trajectory",        id: "trajectory",       hud: true, control: true, class: "menu", action: dump, data: app.trajectory } ),
+            //textures:       new Data( { label: "app.textures",          id: "textures",         hud: true, control: true, class: "menu", action: dump, data: app.textures } ),
+            //utils:          new Data( { label: "app.utils",             id: "utils",            hud: true, control: true, class: "menu", action: dump, data: app.utils } )
         } } ),
         inspect:            new Data( { label: "inspect",           id: "inspect",     permanent: true,  control: true, class: "tab", action: expand, data: {
             scene:          new Data( { label: "scene children",        id: "scene",            hud: true, control: true, class: "menu", action: table, data: app.stage.scene.children } ),
             props:          new Data( { label: "props children",        id: "props",            hud: true, control: true, class: "menu", action: table, data: app.stage.props.children } ),
             persistent:     new Data( { label: "persistent children",   id: "persistent",       hud: true, control: true, class: "menu", action: table, data: app.stage.persistent.children } ),
-            animations:     new Data( { label: "game loop animations",  id: "animations",       hud: true, control: true, class: "menu", action: table, data: app.arrays.animations } ),
-            functions:      new Data( { label: "game loop functions",   id: "functions",        hud: true, control: true, class: "menu", action: table, data: app.arrays.functions } ),
-            perfunct:       new Data( { label: "persistent functions",  id: "perfunct",         hud: true, control: true, class: "menu", action: dump,  data: app.arrays.persistent } ),
-            sprites:        new Data( { label: "sprites",               id: "sprites",          hud: true, control: true, class: "menu", action: table, data: Object.values( sprites ) } ),
-            textures:       new Data( { label: "textures",              id: "textures",         hud: true, control: true, class: "menu", action: table, data: Object.values( app.assets.textures ) } ),
-            displacements:  new Data( { label: "displacement textures", id: "displacements",    hud: true, control: true, class: "menu", action: table, data: Object.values( app.assets.displacements ) } )
+            animations:     new Data( { label: "game loop animations",  id: "animations",       hud: true, control: true, class: "menu", action: table, data: app.data.arrays.animations } ),
+            functions:      new Data( { label: "game loop functions",   id: "functions",        hud: true, control: true, class: "menu", action: table, data: app.data.arrays.functions } ),
+            perfunct:       new Data( { label: "persistent functions",  id: "perfunct",         hud: true, control: true, class: "menu", action: dump,  data: app.data.arrays.persistent } ),
+            //sprites:        new Data( { label: "sprites",               id: "sprites",          hud: true, control: true, class: "menu", action: table, data: Object.values( sprites ) } ),
+            textures:       new Data( { label: "textures",              id: "textures",         hud: true, control: true, class: "menu", action: table, data: Object.values( app.data.assets.textures ) } ),
+            displacements:  new Data( { label: "displacement textures", id: "displacements",    hud: true, control: true, class: "menu", action: table, data: Object.values( app.data.assets.displacements ) } )
         } } ),
-        helpers:            new Data( { label: "helpers",           id: "helpers",     permanent: true,  control: true, class: "tab", action: expand, data: new Converter( app.helpers, "switch", illuminate ) } ),
+        helpers:            new Data( { label: "helpers",           id: "helpers",     permanent: true,  control: true, class: "tab", action: expand, data: new Converter( app.stage.helpers, "switch", illuminate ) } ),
         lights:             new Data( { label: "lights",            id: "lights",      permanent: true,  control: true, class: "tab", action: expand, data: new Converter( app.stage.lights, "switch", illuminate ) } ),
         utilities:          new Data( { label: "utilities",         id: "utilities",   permanent: true,  control: true, class: "tab", action: expand, data: {
             //gui: new Data( { label: "parameters gui", id: "gui", hud: true, control: true, class: "menu", action: null, data: null } ),
@@ -108,7 +106,7 @@ const navigation = function()
                 class: "momentary",
                 action: () => app.record.init.call( this,
                 {
-                    name: app[ scope ].current,
+                    name: scope.current,
                     time: 15,
                     width: 512,
                     height: 512,
@@ -126,8 +124,8 @@ const navigation = function()
                 action: ( button ) => expand( button, new PlaybackData() ),
                 data: null
             } ),
-            stop: new Data( { label: "stop", id: "stop", class: "momentary", action: app[ scope ].stop, data: null } ),
-            reset: new Data( { label: "clear sample data", id: "reset", class: "momentary", action: app[ scope ].reset, data: null } )
+            stop: new Data( { label: "stop", id: "stop", class: "momentary", action: scope.stop, data: null } ),
+            reset: new Data( { label: "clear sample data", id: "reset", class: "momentary", action: scope.reset, data: null } )
         } } ),
         environment:        new Data( { label: "environment",       id: "environment", permanent: false, control: true, class: "tab", action: expand, data: {
             background:     new Data( { label: "background",            id: "background", persistent: true, control: true, class: "menu", action: expand, data: new NavData( { class: "menu", action: open, data: { path: "environment/background/" }, type: "background" } ) } ),
@@ -135,7 +133,7 @@ const navigation = function()
         }, persistent: true } ),
         samples:            new Data( { label: "samples",           id: "samples",      permanent: false, control: true, class: "tab", action: expand, data: new NavGroups( "default" ) } ),
         //applications:       new Data( { label: "applications",      id: "applications", permanent: false, control: true, class: "tab", action: expand, data: new NavGroups( "applications" ) } ),
-        replay:             new Data( { label: "replay",            id: "replay",       permanent: true,  control: true, class: "tab", action: app[ scope ].replay, data: null } )
+        replay:             new Data( { label: "replay",            id: "replay",       permanent: true,  control: true, class: "tab", action: scope.replay, data: null } )
     };
 
     // render tabs and containers
@@ -353,7 +351,7 @@ const navigation = function()
             var button = e.target;
 
             if ( !( args.persistent || args.control ) )
-                app[ scope ].stop();
+                scope.stop();
             else
                 button.setAttribute( "data-persistent", !!args.persistent );
 
@@ -367,13 +365,13 @@ const navigation = function()
 
             if ( args.hud ) hud( button );
 
-            app[ scope ].previous.button = button.dataset.id;
+            scope.previous.button = button.dataset.id;
 
             if ( !args.control )
             {
-                app[ scope ].buttons[ args.level ] = { args: args, button: button, level: args.level, parent: parent };
+                scope.buttons[ args.level ] = { args: args, button: button, level: args.level, parent: parent };
                 // truncate array to length of level
-                app[ scope ].buttons = app[ scope ].buttons.slice( 0, args.level + 1 );
+                scope.buttons = scope.buttons.slice( 0, args.level + 1 );
             }
 
             clearTimeout( timeout );
@@ -467,20 +465,20 @@ const navigation = function()
     {
         Object.assign( this, data );
 
-        app[ scope ].visited[ data.name ] = { name: data.name, options: data.options, prop: data.prop };
+        scope.visited[ data.name ] = { name: data.name, options: data.options, prop: data.prop };
     }
 
     // private functions //////////////////////////////////////////////////////////////////////////
     // clear data between samples
     function clear( name, data )
     {
-        app[ scope ].current = name;
+        scope.current = name;
 
         var persistent = false;
         var checks = [];
             checks.push( data.type !== "default" );
         if ( checks.every( check => check ) )
-            persistent = app[ scope ].previous[ data.type ];
+            persistent = scope.previous[ data.type ];
             checks.push( !!persistent );
         if ( checks.every( check => check ) )
             checks.push( !!Object.keys( persistent ).length );
@@ -492,7 +490,7 @@ const navigation = function()
         if ( checks.every( check => check ) )
             clearProps();
 
-        app[ scope ].previous[ data.type ] = data.name;
+        scope.previous[ data.type ] = data.name;
     }
 
     function clearGUI()
@@ -518,8 +516,8 @@ const navigation = function()
             if ( child.name === name )
                 app.stage.persistent.remove( child );
 
-            app.arrays.persistent[ type ] = [];
-            app.arrays.persistent.functions = [];
+            app.data.arrays.persistent[ type ] = [];
+            app.data.arrays.persistent.functions = [];
         }
     }
 
@@ -529,7 +527,7 @@ const navigation = function()
         {
             let child = app.stage.props.children[ i ];
 
-            if ( child.name !== app[ scope ].current )
+            if ( child.name !== scope.current )
                 app.stage.props.remove( child );
         }
     }
@@ -745,7 +743,7 @@ const navigation = function()
 
         expand( button, args.data );
 
-        app[ scope ].previous.prop = prop;
+        scope.previous.prop = prop;
     }
 
     // import script
@@ -800,7 +798,7 @@ const navigation = function()
 
     function recall( name )
     {
-        return app[ scope ].visited[ name ];
+        return scope.visited[ name ];
     }
 
     // array values dump for inspect

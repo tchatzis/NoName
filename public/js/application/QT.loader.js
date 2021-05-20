@@ -1,7 +1,7 @@
 ( function()
 {
     var index = 0;
-    var head = document.head;
+    var head = window.document.head;
     var debug = false;
     var dependencies =
     [
@@ -12,35 +12,41 @@
         { type: 'css', directory: '', name: 'form' },
         { type: 'css', directory: '', name: 'navigation' },
         { type: 'css', directory: '', name: 'table' },
-        { type: 'css', src: 'https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.css' },
+        { type: 'css', directory: '', name: 'firebase-ui-auth' },
+        { type: 'css', directory: '', name: 'prism' },
+        /** set the class */
+        { type: 'js', directory: 'application', name: 'QT' },
         /** external libraries */
-        { type: 'js', directory: 'lib', name: 'ammo' },
-        { type: 'js', directory: 'lib', name: 'data.gui' },
+        //{ type: 'js', directory: 'lib', name: 'ammo' },
+        //{ type: 'js', directory: 'lib', name: 'data.gui' },
         { type: 'js', directory: 'lib', name: 'three' },
         { type: 'js', directory: 'lib', name: 'BufferGeometryUtils' },
-        { type: 'js', directory: 'lib', name: 'csg' },
-        { type: 'js', directory: 'lib', name: 'ImprovedNoise' },
-        { type: 'js', directory: 'lib', name: 'gamepad' },
+        //{ type: 'js', directory: 'lib', name: 'csg' },
+        //{ type: 'js', directory: 'lib', name: 'ImprovedNoise' },
+
         { type: 'js', directory: 'lib', name: 'OrbitControls' },
-        { type: 'js', directory: 'lib', name: 'oimo' },
-        { type: 'js', directory: 'lib', name: 'TexGen' },
-        { type: 'js', directory: 'lib', name: 'MarchingCubes' },
-        { type: 'js', src: 'https://www.gstatic.com/firebasejs/8.2.7/firebase-app.js' },
-        { type: 'js', src: 'https://www.gstatic.com/firebasejs/8.2.7/firebase-auth.js' },
-        { type: 'js', src: 'https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js' },
-        { type: 'js', src: 'https://www.gstatic.com/firebasejs/8.2.7/firebase-firestore.js' },
-        { type: 'js', directory: 'resources', name: 'app.db' },
+        //{ type: 'js', directory: 'lib', name: 'oimo' },
+        //{ type: 'js', directory: 'lib', name: 'TexGen' },
+        //{ type: 'js', directory: 'lib', name: 'MarchingCubes' },
+        { type: 'js', directory: 'lib', name: 'firebase-app' },
+        { type: 'js', directory: 'lib', name: 'firebase-auth' },
+        { type: 'js', directory: 'lib', name: 'firebase-ui-auth' },
+        { type: 'js', directory: 'lib', name: 'firebase-firestore' },
+        { type: 'js', directory: 'lib', name: 'prism' },
+        { type: 'js', directory: 'lib', name: 'prism.plugin.src' },
         /** application initialize */
-        { type: 'js', directory: 'application', name: 'app.init' },
-        { type: 'js', directory: 'application', name: 'app.load.textures' },
-        { type: 'js', directory: 'application', name: 'app.load.fonts' },
+
+        { type: 'js', directory: 'application', name: 'QT.init' },
+        { type: 'js', directory: 'application', name: 'QT.LoadFonts' },
+        { type: 'js', directory: 'application', name: 'QT.LoadTextures' },
         /** user interface / input */
-        { type: 'js', directory: 'ui', name: 'app.data.forms', module: true },
-        { type: 'js', directory: 'ui', name: 'app.ui' },
-        { type: 'js', directory: 'ui', name: 'app.ui.forms' },
-        { type: 'js', directory: 'ui', name: 'app.gamepad.camera' },
+        //{ type: 'js', directory: 'ui', name: 'app.data.forms', module: true },
+        //{ type: 'js', directory: 'ui', name: 'app.ui' },
+        //{ type: 'js', directory: 'ui', name: 'app.ui.forms' },
+        { type: 'js', directory: 'ui', name: 'QT.GamePad' },
+        { type: 'js', directory: 'ui', name: 'QT.GamePad.Camera' },
         { type: 'js', directory: 'ui', name: 'app.widgets' },
-        { type: 'js', directory: 'ui', name: 'app.mouse' },
+        { type: 'js', directory: 'ui', name: 'QT.MouseControls' },
         { type: 'js', directory: 'ui', name: 'app.navigation' },
         { type: 'js', directory: 'ui', name: 'app.navigation.data' },
         /** game loop */
@@ -48,21 +54,22 @@
         { type: 'js', directory: 'gameloop', name: 'app.postprocessing' },
         { type: 'js', directory: 'gameloop', name: 'app.animate' },
         /** enhance */
-        { type: 'js', directory: 'enhance', name: 'app.ammo' },
-        { type: 'js', directory: 'enhance', name: 'app.audio' },
+        //{ type: 'js', directory: 'enhance', name: 'app.ammo' },
+        /*{ type: 'js', directory: 'enhance', name: 'app.audio' },
         { type: 'js', directory: 'enhance', name: 'app.fractal' },
         { type: 'js', directory: 'enhance', name: 'app.lipstick' },
         { type: 'js', directory: 'enhance', name: 'app.listeners' },
         { type: 'js', directory: 'enhance', name: 'app.path' },        
         { type: 'js', directory: 'enhance', name: 'app.path.organic' },
         { type: 'js', directory: 'enhance', name: 'app.path.param' },
-        { type: 'js', directory: 'enhance', name: 'app.path.plot' },
-        { type: 'js', directory: 'enhance', name: 'app.oimo' },
-        { type: 'js', directory: 'enhance', name: 'app.raycaster' },
+        { type: 'js', directory: 'enhance', name: 'app.path.plot' },*/
+        //{ type: 'js', directory: 'enhance', name: 'app.oimo' },
+        /*{ type: 'js', directory: 'enhance', name: 'app.raycaster' },
         { type: 'js', directory: 'enhance', name: 'app.shaders' },
-        { type: 'js', directory: 'enhance', name: 'app.trajectory' },
+        { type: 'js', directory: 'enhance', name: 'app.trajectory' },*/
         /** assets */
-        { type: 'js', directory: 'assets/analyser', name: 'app.props.analyser' },
+        { type: 'js', directory: 'assets/forms', name: 'QT.forms' },
+        /*{ type: 'js', directory: 'assets/analyser', name: 'app.props.analyser' },
         { type: 'js', directory: 'assets/bend', name: 'app.props.bend' },
         { type: 'js', directory: 'assets/blob', name: 'app.props.blob' },
         { type: 'js', directory: 'assets/cameralayers', name: 'app.props.cameralayers' },
@@ -94,45 +101,45 @@
         { type: 'js', directory: 'assets/shapes', name: 'app.props.shapes' },
         { type: 'js', directory: 'assets/sky', name: 'app.props.sky' },
         { type: 'js', directory: 'assets/stonehenge', name: 'app.props.stonehenge' },
-        { type: 'js', directory: 'assets/structure', name: 'app.props.structure' },
+        { type: 'js', directory: 'assets/structure', name: 'app.props.structure' },*/
         { type: 'js', directory: 'assets/text', name: 'app.props.text' },
-        { type: 'js', directory: 'assets/toxicpool', name: 'app.props.toxicpool' },
+        /*{ type: 'js', directory: 'assets/toxicpool', name: 'app.props.toxicpool' },
         { type: 'js', directory: 'assets/vortex', name: 'app.props.vortex' },
-        { type: 'js', directory: 'assets/voxels', name: 'app.props.voxels' },
+        { type: 'js', directory: 'assets/voxels', name: 'app.props.voxels' },*/
         /** resources */
         // data
-        { type: 'js', directory: 'resources/data', name: 'app.blocks' },
+        /*{ type: 'js', directory: 'resources/data', name: 'app.blocks' },
         { type: 'js', directory: 'resources/data', name: 'app.characters' },
         { type: 'js', directory: 'resources/data', name: 'app.sprites' },
-        { type: 'js', directory: 'resources/data', name: 'app.sounds' },
+        { type: 'js', directory: 'resources/data', name: 'app.sounds' },*/
         // classes
-        { type: 'js', directory: 'resources', name: 'app.bender' },
-        { type: 'js', directory: 'resources', name: 'app.csg' },
-        { type: 'js', directory: 'resources', name: 'app.data.getters' },
-        { type: 'js', directory: 'resources', name: 'app.data.setters' },
-        { type: 'js', directory: 'resources', name: 'app.disruptors' },
+        /*{ type: 'js', directory: 'resources', name: 'app.bender' },
+        { type: 'js', directory: 'resources', name: 'app.csg' },*/
+        { type: 'js', directory: 'resources', name: 'QT.Getters' },
+        { type: 'js', directory: 'resources', name: 'QT.Setters' },
+        /*{ type: 'js', directory: 'resources', name: 'app.disruptors' },
         { type: 'js', directory: 'resources', name: 'app.draw' },
         { type: 'js', directory: 'resources', name: 'app.input' },
         { type: 'js', directory: 'resources', name: 'app.instanced' },
-        { type: 'js', directory: 'resources', name: 'app.loop' },
-        { type: 'js', directory: 'resources', name: 'app.methods' },
-        { type: 'js', directory: 'resources', name: 'app.morph' },
+        { type: 'js', directory: 'resources', name: 'app.loop' },*/
+        { type: 'js', directory: 'resources', name: 'QT.Methods' },
+        /*{ type: 'js', directory: 'resources', name: 'app.morph' },
         { type: 'js', directory: 'resources', name: 'app.music' },
         { type: 'js', directory: 'resources', name: 'app.patterns' },
-        { type: 'js', directory: 'resources', name: 'app.persistent' },
-        { type: 'js', directory: 'resources', name: 'app.presets' },
-        { type: 'js', directory: 'resources', name: 'app.reader' },
-        { type: 'js', directory: 'resources', name: 'app.record' },
-        { type: 'js', directory: 'resources', name: 'app.samples' },
-        { type: 'js', directory: 'resources', name: 'app.scanner' },
+        { type: 'js', directory: 'resources', name: 'app.persistent' },*/
+        { type: 'js', directory: 'resources', name: 'QT.Presets' },
+        //{ type: 'js', directory: 'resources', name: 'app.reader' },
+        { type: 'js', directory: 'resources', name: 'QT.Record' },
+        { type: 'js', directory: 'resources', name: 'QT.Samples' },
+        /*{ type: 'js', directory: 'resources', name: 'app.scanner' },
         { type: 'js', directory: 'resources', name: 'app.scenes' },
         { type: 'js', directory: 'resources', name: 'app.vertexcolors' },
         { type: 'js', directory: 'resources', name: 'app.range' },
-        { type: 'js', directory: 'resources', name: 'app.textures' },        
-        { type: 'js', directory: 'resources', name: 'app.utils' }, 
+        { type: 'js', directory: 'resources', name: 'app.textures' },*/
+        //{ type: 'js', directory: 'resources', name: 'app.utils' },
         //sprites
-        { type: 'js', directory: 'resources/sprites', name: 'sprites.load' },
-        { type: 'js', directory: 'resources/sprites', name: 'sprites.offscreen' },
+        //{ type: 'js', directory: 'resources/sprites', name: 'sprites.load' },
+        //{ type: 'js', directory: 'resources/sprites', name: 'sprites.offscreen' },
         // shaders
         { type: 'js', directory: 'shaders/prebuilt', name: 'sky' },
         { type: 'js', directory: 'shaders/prebuilt', name: 'ocean' },
@@ -189,8 +196,9 @@
         {
             index++;
 
-            var progress = new CustomEvent( 'scripts_progress', { detail: { value: index / dependencies.length, name: `${ ( d.name || d.src ) }.${ d.type } ( ${ index } / ${ dependencies.length } )` } } );
-            document.dispatchEvent( progress );
+            var detail = { detail: { value: index / dependencies.length, name: `${ ( d.name || d.src ) }.${ d.type } ( ${ index } / ${ dependencies.length } )` } };
+            var progress = new CustomEvent( 'scripts_progress', detail );
+            window.dispatchEvent( progress );
 
             if ( index < dependencies.length )
             {
@@ -200,16 +208,10 @@
             else
             {
                 var event = new Event( 'scripts_loaded' );
-                document.dispatchEvent( event );
+                window.dispatchEvent( event );
             }
         };
     };
 
     load();
-
-    document.addEventListener( "scripts_progress", ( e ) =>
-    {
-        document.getElementById( "modal_progress" ).value = e.detail.value;
-        document.getElementById( "modal_label" ).innerText = e.detail.name;
-    } );
 } )();

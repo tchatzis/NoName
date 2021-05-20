@@ -1,9 +1,9 @@
 .table-form
 {
     display: table;
-    border-spacing: 2px;
-    border-collapse: collapse;
+    border-spacing: 0;
     pointer-events: auto;
+    table-layout: fixed;
 }
 
 .table-row
@@ -13,11 +13,52 @@
 
 .table-cell, .table-number, .table-heading
 {
+    border-left: 8px solid transparent;
+    border-radius: 4px;
     display: table-cell;
     margin: 0;
-    padding: 0;
-    vertical-align: bottom;
+    max-width: 25vw;
+    padding: 2px;
+    text-align: left;
+    vertical-align: top;
     white-space: nowrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    user-select: none;
+}
+
+.table-border
+{
+    border-top: 1px solid #222;
+    border-left: 1px solid #222;
+}
+
+.table-number, .table-heading
+{
+    border: none;
+}
+
+.table-control
+{
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #FFF;
+    cursor: pointer;
+    font-size: 1.5em;
+    text-align: center;
+    width: 25px;
+    vertical-align: middle;
+    height: 21px;
+}
+
+.table-control:hover
+{
+    background-color: #066;
+}
+
+.table-heading
+{
+    border: none;
 }
 
 .table-heading
@@ -32,24 +73,36 @@
 .table-number
 {
     color: #666;
-    cursor: "move";
+    cursor: move;
     font-size: 1.2em;
+    text-align: center;
     width: 25px;
+    vertical-align: middle;
+}
+
+.table-separator
+{
+    margin: 0 5px 0 5px;
+    min-height: 21px;
+}
+
+.table-text
+{
+    padding: 0 4px 0 4px;
 }
 
 /* lipstick */
 .table-add
 {
-    border-bottom: 1px solid #333;
-}
-
-.table-border
-{
-    border-top: 1px dotted #333;
-    border-right: 1px dotted #333;
+    background-color: #120;
 }
 
 .table-hover:hover
 {
     background-color: #333;
+}
+
+.table-underline
+{
+    min-height: 21px;
 }

@@ -1,4 +1,4 @@
-const Methods = function( app, mesh, side )
+QT.Methods = function( app, mesh, side )
 {
     var scope = this;
 

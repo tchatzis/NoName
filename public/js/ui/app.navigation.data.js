@@ -1,8 +1,6 @@
-const navdata = function()
+QT.NavData = function()
 {
-    var scope = "navdata";
-    var app = this;
-        app[ scope ] = {};
+    var scope = this;
 
     const Application = function( types, position, rotation )
     {
@@ -48,11 +46,11 @@ const navdata = function()
         this.persistent = true;
     };
 
-    app[ scope ].data =
+    scope.data =
     {
         // applications
-        designer:       new Default( [ "applications" ], [ 0, 1.5, 15 ] ),
-        shapes:         new Default( [ "applications" ], [ 0, 0, 2 ] ),
+        designer:       new Application( [ "applications" ], [ 0, 1.5, 15 ] ),
+        shapes:         new Application( [ "applications" ], [ 0, 0, 2 ] ),
         // assets
         bend:           new Default( [ "assets" ], [ 0, 10, 30 ] ),
         cameralayers:   new Default( [ "assets" ], [ 7, 4, 7 ] ),
@@ -144,7 +142,8 @@ const navdata = function()
         polygons:       new Default( [ "voxels" ], [ 0, 0, 20 ] ),
         pyramid:        new Default( [ "voxels" ], [ 0, 0, 20 ] ),
         // widgets
-        //crud:           new Default( [ "widgets" ], [ 0, 0, 5 ] ),
+        crud:           new Default( [ "widgets" ], [ 0, 0, 5 ] ),
+        forms:          new Default( [ "widgets" ], [ 0, 0, 5 ] ),
         login:          new Default( [ "widgets" ], [ 0, 0, 5 ] ),
         widgets:        new Default( [ "widgets" ], [ 0, 0, 5 ] )
     };

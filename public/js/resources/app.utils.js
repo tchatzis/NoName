@@ -1,11 +1,9 @@
-const Utils = function()
+export default function()
 {
-    var scope = "utils";
-    var app = this;
-        app[ scope ] = {};
-
+    var scope = this;
+    
     /** classes */
-    app[ scope ].LFO = function( args )
+    scope.LFO = function( args )
     {
         var circle = Math.PI * 2;
         var counter = 0;
@@ -27,17 +25,17 @@ const Utils = function()
                 var value = fn[ index ] * attr.scale + attr.offset;
                     value = args.absolute ? Math.sqrt( value * value ): value;
 
-                app[ scope ].path( args.target, attr.attribute, value );
+                scope.path( args.target, attr.attribute, value );
             } );
 
-            counter += 1 / app[ scope ].fps;
+            counter += 1 / scope.fps;
         }.bind( this );
 
         app.arrays.lfo.push( { name: args.name, lfo: this } );
         app.arrays.functions.push( { name: args.name, scope: this, function: update, args: null } );
     };
 
-    app[ scope ].Progress = function( args )
+    scope.Progress = function( args )
     {
         var row, title, progress;
 
@@ -64,15 +62,12 @@ const Utils = function()
             row.appendChild( title );
             row.appendChild( progress );
 
-            // TODO: reinstate
-            //app.ui.container.appendChild( row );
+            app.ui.container.appendChild( row );
         }.bind( this );
 
         this.update = function( args )
         {
             var value = args.value ? args.value / this.limit : 0;
-
-            //app.ui.container.classList.add( "expand" );
 
             title.innerText = `${ args.label } ( ${ args.value.toFixed() } / ${ this.limit } )`;
             progress.value = value;
@@ -83,14 +78,14 @@ const Utils = function()
         init();
     };
 
-    app[ scope ].Wave = function( args )
+    scope.Wave = function( args )
     {
         Object.assign( this, args );
 
         const circle = Math.PI * 2;
         const fn = [ 'sin', 'cos', 'tan', 'sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'asinh', 'acosh', 'atanh' ];
 
-        this.angle = ( ( this.frame / app[ scope ].fps ) * ( circle * this.cycles ) ) % circle;
+        this.angle = ( ( this.frame / scope.fps ) * ( circle * this.cycles ) ) % circle;
 
         fn.forEach( ( f ) =>
         {
@@ -100,7 +95,7 @@ const Utils = function()
 
     /** function */
     // polygon geometry helper
-    app[ scope ].apothem = function( side, number )
+    scope.apothem = function( side, number )
     {
         var apothem = ( side / 2 ) * Math.tan( ( Math.PI * ( number - 2 ) ) / ( number * 2 ) );
         var radius = side / ( 2 * Math.sin( Math.PI / number ) );
@@ -109,7 +104,7 @@ const Utils = function()
     };
     
     // get/set buffer geometry attributes
-    app[ scope ].attributes =
+    scope.attributes =
     {
         get: function( geometry, attribute, index )
         {
@@ -141,14 +136,14 @@ const Utils = function()
     };
 
     // set camera position to ui
-    app[ scope ].camera = function()
+    scope.camera = function()
     {
         app.ui.data.camera.copy( app.stage.camera.position );
         app.ui.update();        
     };
 
     // 3D object centering
-    app[ scope ].center = function( object )
+    scope.center = function( object )
     {
         var box = new THREE.Box3().setFromObject( object );
 
@@ -159,7 +154,7 @@ const Utils = function()
     };
 
     // reset value to start
-    app[ scope ].circular = function( value, max )
+    scope.circular = function( value, max )
     {
         if ( max > 1 )
             return value % max;
@@ -172,7 +167,7 @@ const Utils = function()
     };
 
     // clamp to min or max value
-    app[ scope ].clamp = function( value, lower, upper )
+    scope.clamp = function( value, lower, upper )
     {
         if ( value < lower )
             value = lower;
@@ -181,7 +176,7 @@ const Utils = function()
         return value;
     };
     
-    app[ scope ].clone = function( object )
+    scope.clone = function( object )
     {
         let clone, value, key;
     
@@ -196,7 +191,7 @@ const Utils = function()
             {
                 value = object[ key ];
 
-                clone[ key ] = app[ scope ].clone( value )
+                clone[ key ] = scope.clone( value )
             }
         }
     
@@ -204,7 +199,7 @@ const Utils = function()
     };
 
     // convert hex string to THREE.Color
-    app[ scope ].convert = function( hex )
+    scope.convert = function( hex )
     {
         var array = hex.match( /.{1,2}/g );
         var vector = [];
@@ -220,7 +215,7 @@ const Utils = function()
     };
 
     // returns the normalized vector of direction
-    app[ scope ].direction = function( vector )
+    scope.direction = function( vector )
     {
         var direction = [];
 
@@ -234,7 +229,7 @@ const Utils = function()
     };
 
     // colorful console.log()
-    app[ scope ].debug = function( message, bgcolor )
+    scope.debug = function( message, bgcolor )
     {
         var style =
         [
@@ -245,7 +240,7 @@ const Utils = function()
         console.log( `%c${ message }`, style );
     };
 
-    app[ scope ].table = function( data, headings )
+    scope.table = function( data, headings )
     {
         var delim = " \t\t | \t";
 
@@ -264,13 +259,13 @@ const Utils = function()
     };
 
     // rads to degrees
-    app[ scope ].degrees = function( rads )
+    scope.degrees = function( rads )
     {
         return Math.round( rads * 180 / Math.PI );
     };
 
     // grid indices of next and above - should wrap infinitely
-    app[ scope ].dxdy = function( index, width, height )
+    scope.dxdy = function( index, width, height )
     {
         var w  = width  + 1;
         var h  = height + 1;
@@ -283,7 +278,7 @@ const Utils = function()
     };
 
     // expands tree in console.log
-    app[ scope ].expand = ( function()
+    scope.expand = ( function()
     {
         var MAX_DEPTH = 32;
 
@@ -303,7 +298,7 @@ const Utils = function()
                 {
                     item.forEach( ( element ) =>
                     {
-                        app[ scope ].expand( element, depth );
+                        scope.expand( element, depth );
                     } );
 
                     return;
@@ -314,7 +309,7 @@ const Utils = function()
                     if ( item.hasOwnProperty( key ) )
                     {
                         console.group( key, ": ", item[ key ] );
-                        app[ scope ].expand( item[ key ], depth + 1 );
+                        scope.expand( item[ key ], depth + 1 );
                         console.groupEnd();
                     }
                 }
@@ -323,7 +318,7 @@ const Utils = function()
     } )();
 
     // color value to hex string
-    app[ scope ].format = function( color )
+    scope.format = function( color )
     {
         color = color.toString( 16 );
     
@@ -335,7 +330,7 @@ const Utils = function()
         return "0x" + color;
     };
 
-    app[ scope ].framerate = function()
+    scope.framerate = function()
     {
         var start, fps, total, count;
         var sample = 60;
@@ -366,11 +361,10 @@ const Utils = function()
             }
             else
             {
-                app[ scope ].fps = Math.round( total / ( sample - delay ) );
-                console.info( `${ app[ scope ].fps } fps` );
+                scope.fps = Math.round( total / ( sample - delay ) );
 
                 var event = new Event( "framerate" );
-                document.dispatchEvent( event );
+                window.dispatchEvent( event );
             }
         };
 
@@ -378,7 +372,7 @@ const Utils = function()
     };
 
     // calculates vertex and face counts
-    app[ scope ].geometry = function( width, height )
+    scope.geometry = function( width, height )
     {
         var i = 0;
     
@@ -397,7 +391,7 @@ const Utils = function()
     };
 
     // create a gradient with color stops - has a debug output to document
-    app[ scope ].gradient = function( args )
+    scope.gradient = function( args )
     {
         var steps;
         var color = {};
@@ -421,10 +415,10 @@ const Utils = function()
                 blend: [],
                 debug: []
             };
-            color.current.hex = app[ scope ].format( color.current.color );
-            color.current.rgb = app[ scope ].convert( color.current.hex );
-            color.next.hex = app[ scope ].format( color.next.color );
-            color.next.rgb = app[ scope ].convert( color.next.hex );
+            color.current.hex = scope.format( color.current.color );
+            color.current.rgb = scope.convert( color.current.hex );
+            color.next.hex = scope.format( color.next.color );
+            color.next.rgb = scope.convert( color.next.hex );
 
             for ( var s = 0; s < steps; s++ )
             {
@@ -466,7 +460,7 @@ const Utils = function()
     };
 
     // return name of greater and lesser width or height or [ array ]
-    app[ scope ].greater = function( obj, array )
+    scope.greater = function( obj, array )
     {
         var props = array || [ "width", "height" ];
     
@@ -482,26 +476,26 @@ const Utils = function()
     };
 
     // random hex color
-    app[ scope ].hex = function()
+    scope.hex = function()
     {
         return Math.random().toString( 16 ).slice( 2, 8 );
     };
 
     // returns random element from array or object
-    app[ scope ].item = function( array )
+    scope.item = function( array )
     {
         var index = -1;
 
         if ( Array.isArray( array ) )
         {
-            index = app[ scope ].random( 0, array.length - 1 );
+            index = scope.random( 0, array.length - 1 );
             return array[ index ];
         }
 
         if ( typeof array === "object" )
         {
             array = Object.values( array );
-            index = app[ scope ].random( 0, array.length - 1 );
+            index = scope.random( 0, array.length - 1 );
             return array[ index ];
         }
 
@@ -509,7 +503,7 @@ const Utils = function()
     };
 
     // on screen debugger
-    app[ scope ].log = function()
+    scope.log = function()
     {
         let re = /([^(]+)@|at ([^(]+) \(/g;
         let str = re.exec( new Error().stack );
@@ -533,7 +527,7 @@ const Utils = function()
     };
     
     // any value range to specific output range
-    app[ scope ].minmax = function( args )
+    scope.minmax = function( args )
     {
         var value = args.value / args.limit;
     
@@ -541,15 +535,15 @@ const Utils = function()
     };
 
     // calculate normal of angle
-    app[ scope ].normal = function( a )
+    scope.normal = function( a )
     {
         var d = 1 / ( Math.sqrt( 1 + Math.pow( Math.cos( a ), 2 ) ) );
 
-        return { x: app[ scope ].round( Math.cos( a ) * d, 4 ), y: app[ scope ].round( Math.cos( a ) * -d, 4 ) };
+        return { x: scope.round( Math.cos( a ) * d, 4 ), y: scope.round( Math.cos( a ) * -d, 4 ) };
     };
 
     // height map to normal map
-    app[ scope ].normals = function( image )
+    scope.normals = function( image )
     {
         const convert = function( canvas )
         {
@@ -623,9 +617,9 @@ const Utils = function()
     };
 
     // Box helper
-    app[ scope ].outline = function( args )
+    scope.outline = function( args )
     {
-        //scope.app[ scope ].outline( { object: scope.group, color: "yellow", name: "helper" } );
+        //scope.scope.outline( { object: scope.group, color: "yellow", name: "helper" } );
         var helper = new THREE.BoxHelper( args.object, args.color );
             helper.name = args.name;
     
@@ -634,7 +628,7 @@ const Utils = function()
     };
 
     // takes a dot notation string and converts it to object path
-    app[ scope ].path = function( object, attribute, value )
+    scope.path = function( object, attribute, value )
     {
         var p = 0;
         var param;
@@ -663,25 +657,25 @@ const Utils = function()
     };
 
     // rads to degrees
-    app[ scope ].rads = function( degrees )
+    scope.rads = function( degrees )
     {
         return Math.PI * degrees / 180;
     };
 
     // random integer between min and max
-    app[ scope ].random = function( min, max )
+    scope.random = function( min, max )
     {
         return Math.round( Math.random() * ( max - min ) + min );
     };
 
     // random float between min and max
-    app[ scope ].range = function( min, max )
+    scope.range = function( min, max )
     {
         return Math.random() * ( max - min ) + min;
     };
 
     // round to precision decimal
-    app[ scope ].round = function( value, precision )
+    scope.round = function( value, precision )
     {
         var p = Math.pow( 10, precision );
 
@@ -689,7 +683,7 @@ const Utils = function()
     };
 
     // sort key[ prop ]
-    app[ scope ].sort = function( array, prop )
+    scope.sort = function( array, prop )
     {
         var value =
         {
@@ -701,7 +695,7 @@ const Utils = function()
     };
 
     // traverse an object of unknown schema
-    app[ scope ].traverse = function( object )
+    scope.traverse = function( object )
     {
         const isArray = ( o ) => Object.prototype.toString.call( o ) === '[object Array]';
         const traverseArray = ( arr ) => arr.forEach( ( x ) => traverse( x ) );
@@ -731,13 +725,13 @@ const Utils = function()
     };
 
     // async slow down a loop - see app.props.city / scan for usage
-    app[ scope ].sleep = function( milliseconds )
+    scope.sleep = function( milliseconds )
     {
         return new Promise( resolve => setTimeout( resolve, milliseconds ) );
     };
 
     // remove duplicate object keys from array
-    app[ scope ].unique = function( array, key )
+    scope.unique = function( array, key )
     {
         return Array.from( new Set( array.map( a => a[ key ] ) ) )
         .map( k =>
@@ -747,7 +741,7 @@ const Utils = function()
     };
 
     // update / insert value in object
-    app[ scope ].upsert = function( object, args )
+    scope.upsert = function( object, args )
     {
         if ( !object || !args )
             return;
@@ -770,10 +764,10 @@ const Utils = function()
 
         object = object[ _prop ];
 
-        if ( typeof object == "object" ) app[ scope ].upsert( object, args );
+        if ( typeof object == "object" ) scope.upsert( object, args );
     };
 
-    app[ scope ].uuid = function()
+    scope.uuid = function()
     {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, function( c )
         {
