@@ -76,7 +76,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: calc( 85vw - 4px );
+    width: 100vw;
     height: 24px;
     padding: 2px;
     background-color: rgba( 0, 0, 0, 0.8 );
@@ -316,12 +316,12 @@ progress[ value ]::-webkit-progress-value
     border-radius: 4px;
     border: 1px solid #333;
     background-color: #111;
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     text-align: center;
     color: silver;
     font-size: 2em;
-    line-height: 32px;
+    line-height: 24px;
     cursor: pointer;
 }
 
@@ -365,10 +365,10 @@ progress[ value ]::-webkit-progress-value
     padding: 0;
     margin: 0;
     user-select: none;
-    bottom: 0;
+    bottom: 24px;
     right: 0;
-    width: 15vw;
-    height: 100vh;
+    width: 18vw;
+    height: calc( 100vh - 48px );
     overflow-x: hidden;
     overflow-y: auto;
     background-color: rgba( 0, 0, 0, 0.8 );

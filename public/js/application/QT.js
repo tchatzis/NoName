@@ -12,7 +12,7 @@ function QT()
         loaded: new Set(),        
         progress: { limit: 7, value: 1 },
         ready: false,
-        sample: { path: "widgets/crud", options: ( imported ) => {}/*console.info( "sample", imported )*/ },
+        sample: { path: "applications/designer", options: ( imported ) => {}/*console.info( "sample", imported )*/ },
         title: "NoNameGame",
         url: window.location.origin == "https://tchatzis.github.io" ? window.location.origin + "/" + this.title + "/public/" : window.location.origin + "/"
     };

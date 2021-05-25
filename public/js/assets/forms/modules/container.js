@@ -10,8 +10,18 @@ export function Container( config )
     this.tabs.map = new Map();
     this.contents = new ContentMethods();
 
+    ContainerMethods.call( this );
+
     config.parent.appendChild( this.element );
     config.parent.classList.remove( "hide" );
+
+    function ContainerMethods()
+    {
+        this.get =
+        {
+            element: ( title ) => this.tabs.get( title ).content.element
+        };
+    }
 
     function Content()
     {

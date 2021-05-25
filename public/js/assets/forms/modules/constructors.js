@@ -1,6 +1,17 @@
 export const Constructors = function()
 {
     var scope = this;
+    var convert = function( value )
+    {
+        if ( typeof value !== "object" )
+            return value;
+
+        if ( typeof value == "object" )
+            if ( Array.isArray( value ) )
+                return [ ...value ];
+            else
+                return { ...value };
+    };
 
     this.Col = function( args )
     {
@@ -68,17 +79,52 @@ export const Constructors = function()
         this.event = args.event;
         this.handler = args.handler || console.warn( this.event, "event handler is not defined" );
     };
+    
+    this.Item = function( args, key )
+    {
+        this[ key ] = args[ key ];
+        this.label = args.label || this[ key ];
+        this.children = [];
+        this.expand = args.expand || false;
+        this.item = args.item;
+        this.parent = args.parent || "";
+        this.visible = args.visible || true;
+        
+        this.clone = () =>
+        {
+            var args = {};
+
+            for ( let prop in this )
+                if ( this.hasOwnProperty( prop ) )
+                    args[ prop ] = convert( this[ prop ] );
+
+            return new scope.Item( args, key );
+        };
+
+        this.equals = ( item ) => item[ key ] == this[ key ];
+    };
 
     this.Option = function( args )
     {
-        if ( args.hasOwnProperty( "text" ) )
-            this.text = args.text;
-
-        if ( args.hasOwnProperty( "value" ) )
-            this.value = args.value;
-
         if ( typeof args !== "object" )
+        {
             args = { text: args, value: args };
+            Object.assign( this, args );
+        }
+        else
+        {
+            let unpack = () => { for ( let name in args ) return args[ name ] };
+
+            if ( args.hasOwnProperty( "text" ) )
+                this.text = args.text;
+            else
+                this.text = unpack();
+
+            if ( args.hasOwnProperty( "value" ) )
+                this.value = args.value;
+            else
+                this.value = unpack();
+        }
 
         this.text  = typeof this.text  == "undefined" ? this.value : this.text;
         this.value = typeof this.value == "undefined" ? this.text  : this.value;
@@ -120,7 +166,7 @@ export const Constructors = function()
             return typeof this.value;
         };
 
-        this.novalue = ( value ) => value == "" || typeof value == "undefined" || value == null || isNaN( value );
+        this.novalue = ( value ) => value == "" || typeof value == "undefined" || value == null;
 
         this.void = () => [ "text", "value" ].every( key => this.novalue( this[ key ] ) );
     };

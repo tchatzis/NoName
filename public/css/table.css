@@ -13,7 +13,7 @@
 
 .table-cell, .table-number, .table-heading
 {
-    border-left: 8px solid transparent;
+    border-right: 4px solid transparent;
     border-radius: 4px;
     display: table-cell;
     margin: 0;
@@ -30,19 +30,15 @@
 .table-border
 {
     border-top: 1px solid #222;
-    border-left: 1px solid #222;
-}
-
-.table-number, .table-heading
-{
-    border: none;
+    border-right: 1px solid #222;
 }
 
 .table-control
 {
+    background-color: #222;
     border: 1px solid #333;
     border-radius: 4px;
-    color: #FFF;
+    color: silver;
     cursor: pointer;
     font-size: 1.5em;
     text-align: center;
@@ -56,22 +52,61 @@
     background-color: #066;
 }
 
-.table-heading
+.table-disabled
 {
-    border: none;
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.table-divider
+{
+    color: #999;
+    font-family: monospace;
+    font-size: 1.5em;
+    max-width: 80px;
+    text-align: left;
+    white-space: nowrap;
 }
 
 .table-heading
 {
+    border: none;
     pointer-events: none;
-    color: orange;
+    color: #666;
     font-size: 1.2em;
+    line-height: 23px;
     padding-bottom: 2px;
     text-align: left;
+    vertical-align: top;
+}
+
+@keyframes FadeIn
+{
+    from
+    {
+        background-color: #060;
+    }
+
+    to
+    {
+        background-color: transparent;
+    }
+}
+
+.table-highlight
+{
+    background-color: transparent;
+    animation: FadeIn 2s ease-in-out forwards;
+}
+
+.table-none
+{
+    pointer-events: none;
 }
 
 .table-number
 {
+    border: none;
     color: #666;
     cursor: move;
     font-size: 1.2em;
@@ -94,7 +129,7 @@
 /* lipstick */
 .table-add
 {
-    background-color: #120;
+    background-color: #222;
 }
 
 .table-hover:hover

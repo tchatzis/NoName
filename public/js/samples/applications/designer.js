@@ -1,3 +1,5 @@
+import { Designer } from '../../assets/designer/designer.js';
+
 var options = {};
 
 var prop = function( name )

@@ -15,14 +15,19 @@ input, select, .form-preview
 {
     color: silver;
     background-color: black;
-    border: 1px solid #666;
+    border: 1px solid #333;
     border-radius: 4px;
     font-size: 12px;
     outline: none;
     padding: 0 5px 0 5px;
     height: 21px;
-    pointer-events: auto;
+    pointer-events: inherit;
     margin-right: 2px;
+}
+
+input[ autofill ]
+{
+    display: none !important;
 }
 
 input[ type=range ]
@@ -57,14 +62,15 @@ input[ type=number ]
     margin-right: 8px;
 }
 
-input[ type=button ]
+input[ type=button ], input[ type=submit ]
 {
-    color: cyan;
+    color: silver;
+    background-color: #222;
 }
 
 input[ type=button ]:hover, input[ type=submit ]:hover
 {
-    background-color: #666;
+    background-color: #066;
     cursor: pointer;
 }
 
@@ -121,7 +127,7 @@ input:disabled
     min-width: 21px;
     margin-left: 4px;
     margin-right: 4px;
-
+    pointer-events: auto;
     border: 1px solid #333;
     background-color: #666;
     color: black;
@@ -144,7 +150,7 @@ input:disabled
     display: inline-block;
     height: 23px;
     width: 23px;
-    border: 1px solid #666;
+    border: 1px solid #333;
     border-radius: 4px;
     background-color: black;
     margin-right: 4px;
@@ -233,7 +239,7 @@ input:disabled
 
 .forminvalid
 {
-    border-left: 8px solid red !important;
+    border-right: 4px solid red !important;
 }
 
 .formadd, .formitem, .formlist
@@ -249,12 +255,13 @@ input:disabled
     font-size: 12px;
     line-height: 13px;
     padding: 4px 10px 4px 10px;
-    border: 1px solid #666;
+    border: 1px solid #333;
     border-radius: 4px;
     white-space: nowrap;
     text-align: left;
     background-color: black;
     min-width: 60px;
+    pointer-events: auto;
 }
 
 .formlink
@@ -359,7 +366,7 @@ input:disabled
     text-align: center;
     line-height: 9px;
     font-size: 1em;
-    color: #666;
+    color: #999;
     border: 1px solid #333;
     border-radius: 4px;
     padding: 2px;
@@ -367,6 +374,7 @@ input:disabled
     margin-right: 4px;
     height: 15px;
     width: 15px;
+    pointer-events: auto;
 }
 
 .formswitch:hover

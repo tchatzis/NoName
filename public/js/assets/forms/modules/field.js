@@ -8,86 +8,60 @@ function Field( args )
     var constructors = new Constructors();
     var types;
 
+    const check = ( value ) => this.value.value ? this.value : new constructors.Option( { text: this.value.text, value: value } );
+    const checkVoid = ( value ) => this.value.void() ? new constructors.Option( { text: this.value.text, value: value } ) : this.value;
+
     // get/set values and options
     const defaults = async () =>
     {
-        var TYPE = this.type.toUpperCase();
-        var text = this.name || TYPE;
-
         switch( field.type )
         {
             case "button":
             case "submit":
-                this.value = this.value || new constructors.Option( { text: text, value: TYPE } );
+                this.value = check( field.name.toUpperCase() );
             break;
 
             case "color":
-                this.value = this.value || new constructors.Option( { text: text, value: "#000000" } );
+                this.value = check( "#000000" );
             break;
 
             case "buttons":
             case "cycle":
             case "combo":
             case "select":
-            case "tree":
-                this.value = this.value || new constructors.Option( { text: text, value: "" } );
-                this.options = this.options || await options( this.source );
+                this.options = await options( this.source );
             break;
 
             case "date":
                 let date = new Date( this.value.value ) || new Date();
                     date = date.toISOString().substring( 0, 10 );
-                this.value = new constructors.Option( { text: text, value: date } );
+                this.value = check( date );
             break;
 
-            case "code":
-            case "email":
-            case "hidden":
-            case "label":
-            case "match":
-            case "password":
-            case "preview":
-            case "readonly":
-            case "tel":
-            case "text":
-            case "url":
-                this.value = this.value || new constructors.Option( { text: text, value: "" } );
-            break;
-
-            case "number":
-            case "range":
-                let number = this.value.type() == "number" ? this.value.value : 0;
-                this.value = new constructors.Option( { text: text, value: number } );
+            case "menu":
+            case "tree":
+                this.options = await items( this.source );
+                this.value = this.options.find( option => option.equals( this.value ) ) || this.options.find( option => option.parent == "" );
             break;
 
             case "object":
-                this.value = this.value.void() ? new constructors.Option( { text: text, value: { a: "amanda", b: "bob", c: "cathy", d: "dave" } } ) : this.value;
+                this.value = checkVoid( { a: "amanda", b: "bob", c: "cathy", d: "dave" } );
             break;
 
             case "time":
                 let time = new Date( this.value.value ) || new Date();
                     time = time.toTimeString().split(' ')[ 0 ];
-                this.value = new constructors.Option( { text: text, value: time } );
+                this.value = check( time );
             break;
 
             case "toggle":
                 let bool = !!this.value.value;
-                this.options = this.options || await options( this.source );
+                this.options = await options( this.source );
                 this.value = this.options.find( option => option.value == bool );
             break;
 
-            case "separator":
-            case "underscore":
-            break;
-
             case "vector":
-                this.value = this.value.void() ? new constructors.Option( { text: text, value: { x: 0, y: 0, z: 0 } } ) : this.value;
-            break;
-
-            default:
-                let error = `"${ field.type }" component is not defined`;
-                console.error( error );
-                throw( error );
+                this.value = checkVoid( { x: 0, y: 0, z: 0 } );
             break;
         }
 
@@ -102,9 +76,10 @@ function Field( args )
     {
         switch( field.type )
         {
+            //case "color":   // because the color has to be validated first
             case "match":   // because the target is the button and not the input
             case "submit":  // because the row is validated before the event is fired
-            case "tree":    // because the target is the label and not the input
+            //case "tree":    // because the target is the label and not the input
             break;
 
             default:
@@ -123,6 +98,24 @@ function Field( args )
 
         Components[ type.value ].call( this );
     };
+
+    // get items from js or db
+    async function items( source )
+    {
+        var options = [];
+
+        if ( !source )
+            throw( `"${ args.type }" source is not defined` );
+
+        var response = await app.getters[ source.type ]( source );
+            response.data.forEach( item =>
+            {
+                var option = new constructors.Item( item, source.key );
+                    options.push( option );
+            } );
+
+        return options;
+    }
 
     // put the args into constructors
     const normalize = () =>
@@ -152,7 +145,7 @@ function Field( args )
                     break;
 
                     case "value":
-                        col[ prop ] = objectify( col[ prop ] );
+                        col[ prop ] = optionize( col[ prop ] );
                     break;
                 }
             }
@@ -161,19 +154,31 @@ function Field( args )
         Object.assign( this, col );
     };
 
-    const objectify = ( value ) =>
+    const optionize = ( value ) =>
     {
-        if ( this.type == "number" )
-            return new constructors.Option( { text: value, value: value ? Number( value ) : 0 } );
+        if ( [ "number", "range" ].find( type => args.type == type ) )
+            value = Number( value );
+
+        if ( value == null )
+            return new constructors.Option( { text: "", value: "" } );
+
+        if ( typeof value == "undefined" )
+            return new constructors.Option( { text: "", value: "" } );
+
+        if ( typeof value == "boolean" )
+            return new constructors.Option( { text: args.name, value: value } );
+
+        if ( typeof value == "number" )
+            return new constructors.Option( { text: value, value: value } );
 
         if ( typeof value == "string" )
             return new constructors.Option( { text: value, value: value } );
 
         if ( Array.isArray( value ) )
-            return new constructors.Option( { text: "", value: [ ...value ] } );
+            return new constructors.Option( { text: args.name, value: [ ...value ] } );
 
         if ( typeof value == "object" )
-            return new constructors.Option( { text: "", value: { ...value } } );
+            return new constructors.Option( { text: args.name, value: { ...value } } );
     };
 
     // get options from js or db
@@ -245,9 +250,10 @@ function Field( args )
                 new constructors.Option( { text: "cycle", value: "cycle" } ),
                 new constructors.Option( { text: "label", value: "label" } ),
                 new constructors.Option( { text: "match", value: "match" } ),
-                new constructors.Option( { text: "preview", value: "preview" } ),
+                new constructors.Option( { text: "menu", value: "menu" } ),
                 new constructors.Option( { text: "number", value: "number" } ),
                 new constructors.Option( { text: "object", value: "object" } ),
+                new constructors.Option( { text: "preview", value: "preview" } ),
                 new constructors.Option( { text: "select", value: "select" } ),
                 new constructors.Option( { text: "separator", value: "separator" } ),
                 new constructors.Option( { text: "submit", value: "submit" } ),
@@ -260,6 +266,12 @@ function Field( args )
             types = types.sort( ( a, b ) => a.text - b.text );
         }
     } );
+
+    field.refresh =
+    {
+        items: async () => await items( this.source ),
+        options: async () => await options( this.source )
+    };
 
     field.set =
     {
@@ -280,10 +292,23 @@ function Field( args )
 
         handlers: () =>
         {
+            var handler = ( e, type ) =>
+            {
+                e.preventDefault();
+
+                if ( type.event == "input" )
+                {
+                    if ( this.validate() )
+                        type.handler( this );
+                }
+                else
+                   type.handler( this );
+            };
+
             this.handlers.forEach( type =>
             {
-                this.element.removeEventListener( type.event, () => type.handler( this ), false );
-                this.element.addEventListener( type.event, () => type.handler( this ), false );
+                this.element.removeEventListener( type.event, ( e ) => handler.call( this, e, type ), false );
+                this.element.addEventListener(    type.event, ( e ) => handler.call( this, e, type ), false );
             } );
         },
 
@@ -326,11 +351,12 @@ function Field( args )
             validated:  ( field ) => field.validate.row( field ),
 
             // types
+            button:     () => true,
             buttons:    () => is.populated( field.selected.value ),
             click:      () => true,
             code:       () => true,
             combo:      () => is.populated( field.selected.value ),
-            color:      () => ( /^#([A-Fa-f0-9]{6})/ ).test( field.selected.value ),
+            color:      () => ( /^transparent|#([A-Fa-f0-9]{6})/ ).test( field.selected.value ),
             cycle:      () => is.populated( field.selected.value ),
             date:       () => ( /^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])/ ).test( field.selected.value ),
             datalist:   () => is.populated( field.selected.value ),
@@ -341,6 +367,7 @@ function Field( args )
             hidden:     () => is.populated( field.selected.value ),
             list:       () => is.populated( field.selected.value ),
             match:      () => is.matched( field.value.value, field.selected.value ),
+            menu:       () => true,
             number:     () => is.numeric( field.selected.value ),
             object:     () => Object.keys( field.selected.value ).every( key => is.populated( field.selected.value[ key ] ) ),
             password:   () => (/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/).test( field.selected.value ),
@@ -352,7 +379,7 @@ function Field( args )
             tel:        () => ( /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$/ ).test( field.selected.value ),
             text:       () => is.string( field.selected.value ) && is.populated( field.selected.value ),
             toggle:     () => is.boolean( field.selected.value ),
-            tree:       () => is.text( field.selected.value ),
+            tree:       () => true,
             url:        () => ( /^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/ ).test( field.selected.value ),
             vector:     () => Object.keys( field.selected.value ).every( axis => is.numeric( field.selected.value[ axis ] ) )
         };
@@ -384,12 +411,10 @@ function Field( args )
 
     field.validate.row = () =>
     {
-        if ( !field.table )
-            return true;
-
         var validated = [];
         var valid = false;
         var row = field.table.get.row( field.index );
+        var submit = [];
 
         for ( let col in row )
         {
@@ -397,12 +422,21 @@ function Field( args )
 
             if ( obj.field && obj.field.required )
                 validated.push( obj.field.validate( obj.field ) );
+            else if ( obj.field && obj.field.type == "submit" )
+                submit.push( obj.field );
             else
             {
                 valid = validated.every( bool => bool );
 
                 if ( obj.state )
                     obj.state( valid );
+
+                submit.forEach( item =>
+                {
+                    var action = valid ? "removeAttribute" : "setAttribute";
+
+                    item.element[ action ]( "disabled", "" );
+                } );
 
                 return valid;
             }

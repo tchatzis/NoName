@@ -5,7 +5,7 @@ export default function()
     
     this.display =
     {
-        authenticate: function(){ return true },
+        authenticate: ( args ) => this.process.authenticate( args ),
         create: function( success )
         {
             var denied = function( error )
@@ -83,9 +83,9 @@ export default function()
 
     this.process =
     {
-        authenticate: function()
+        authenticate: function( args )
         {
-            this.ui.modal.innerHTML = null;
+            args.parent.innerHTML = null;
 
             firebase.auth().onAuthStateChanged( auth =>
             {
@@ -104,20 +104,19 @@ export default function()
                 {
                     var form = scope.display.login( success );
 
-                    this.ui.modal.appendChild( form );
+                    args.parent.appendChild( form );
                 }
             } );
 
             var success = function( user )
             {
-                this.user = user;
+                args.parent.innerHTML = null;
+                args.parent.classList.add( "hide" );
 
-                this.ui.modal.innerHTML = null;
-                this.ui.modal.classList.add( "hide" );
-
-                this.init();
-                this.ui.toolbar.append( { icon: 128274, title: "Sign Out", action: scope.process.logout } );
-            }.bind( this );
+                app.user = user;
+                app.init();
+                app.ui.toolbar.append( { icon: 128274, title: "Sign Out", action: scope.process.logout } );
+            };
         },
         create: function( data, success, denied )
         {

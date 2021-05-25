@@ -132,7 +132,7 @@ QT.Navigation = function()
             ground:         new Data( { label: "ground",                id: "ground",     persistent: true, control: true, class: "menu", action: expand, data: new NavData( { class: "menu", action: open, data: { path: "environment/ground/" }, type: "ground" } ) } )
         }, persistent: true } ),
         samples:            new Data( { label: "samples",           id: "samples",      permanent: false, control: true, class: "tab", action: expand, data: new NavGroups( "default" ) } ),
-        //applications:       new Data( { label: "applications",      id: "applications", permanent: false, control: true, class: "tab", action: expand, data: new NavGroups( "applications" ) } ),
+        applications:       new Data( { label: "applications",      id: "applications", permanent: false, control: true, class: "tab", action: expand, data: new NavGroups( "applications" ) } ),
         replay:             new Data( { label: "replay",            id: "replay",       permanent: true,  control: true, class: "tab", action: scope.replay, data: null } )
     };
 

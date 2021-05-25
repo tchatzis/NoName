@@ -1,10 +1,10 @@
 import { Utilities } from './utilities.js';
+import { Constructors } from './constructors.js';
 
 function oninput()
 {
     var event = new Event( "input" );
-    //console.warn( this );
-    this.dispatchEvent( event );
+    this.element.dispatchEvent( event );
 }
 
 function handles()
@@ -28,6 +28,12 @@ function options( parent )
     } );
 }
 
+function override( e )
+{
+    e.preventDefault();
+    e.stopPropagation();
+}
+
 // this is the hook for Table()
 function table()
 {
@@ -36,7 +42,9 @@ function table()
         this.table.get.columns().forEach( name =>
         {
             let field = this.table.get.field( this.index, name );
-            this.table.next[ name ] = field.selected.value;
+
+            if ( field && field.required )
+                this.table.set.next( name, field.selected.value );
         } );
     }
 }
@@ -47,10 +55,7 @@ function Value( value )
 }
 
 const Components = {};
-
-// TODO: every component must have an "input" event when changing
-// TODO: field.validate.row();
-// TODO: table.call in this.update()
+const constructors = new Constructors();
 
 Object.defineProperty( Components, "input",
 {
@@ -83,8 +88,6 @@ Object.defineProperty( Components, "input",
 
             table.call( this );
         };
-
-        this.update( this.value );
     }
 } );
 
@@ -139,9 +142,9 @@ Object.assign( Components,
                     item.style.textAlign = "left";
                     item.addEventListener( "click", () =>
                     {
-                        field.selected = option;
                         field.update( option );
-                        oninput.call( field.element );
+                        field.validate();
+                        oninput.call( field );
                     }, false );
                 if ( option.disabled )
                     item.classList.add( "formdisabled" );
@@ -219,8 +222,7 @@ Object.assign( Components,
             this.element.addEventListener( "keyup", function()
             {
                 field.selected.value = this.innerHTML;
-                oninput.call( this );
-
+                //oninput.call( this );
                 field.validate( field );
             }, false );
         }
@@ -233,7 +235,7 @@ Object.assign( Components,
             Prism.highlightElement( this.element );
         };
 
-        this.update( this.value );
+        //this.update( this.value );
     },
 
     color: function()
@@ -247,15 +249,16 @@ Object.assign( Components,
             input.setAttribute( "name", this.name );
             input.setAttribute( "type", "text" );
             input.setAttribute( "maxlength", 7 );
-            input.setAttribute( "size", 4 );
+            input.setAttribute( "size", 5 );
             input.setAttribute( "spellcheck", false );
             input.setAttribute( "pattern", "^#([A-Fa-f0-9]{6})" );
-            input.addEventListener( "input", function()
+            input.addEventListener( "input", function( e )
             {
+                e.preventDefault();
+
                 field.selected.value = this.value;
                 field.update( field.selected );
-                field.validate( field );
-                oninput.call( field.element );
+                //oninput.call( field );
             }, false );
 
         this.element = document.createElement( "div" );
@@ -269,8 +272,6 @@ Object.assign( Components,
             input.value = option.value;
             color.style.backgroundColor = option.value;
         };
-
-        this.update( this.value );
     },
 
     combo: function()
@@ -283,8 +284,8 @@ Object.assign( Components,
             input.setAttribute( "name", this.name );
             input.setAttribute( "type", "text" );
             input.setAttribute( "placeholder", this.name );
-            input.setAttribute( "list", "" );
-            input.setAttribute( "autocomplete", "off" );
+            //input.setAttribute( "list", "" );
+            input.setAttribute( "autocomplete", "new-password" );
             input.addEventListener( "click", () =>
             {
                 items.classList.toggle( "hide" );
@@ -331,7 +332,7 @@ Object.assign( Components,
             this.selected = option;
         };
 
-        this.update( this.value );
+        //this.update( this.value );
 
         options.call( this, items, field );
     },
@@ -383,7 +384,7 @@ Object.assign( Components,
         this.update = ( option ) =>
         {
             this.element.innerText = option.value;
-            oninput.call( this.element );
+            //oninput.call( this.element );
         };
 
         this.update( this.value );
@@ -408,7 +409,7 @@ Object.assign( Components,
             input.addEventListener( "input", function()
             {
                 field.update( new Value( this.value ) );
-                oninput.call( field.element );
+                //oninput.call( field.element );
             }, false );
 
         this.element.appendChild( input );
@@ -437,6 +438,239 @@ Object.assign( Components,
         };
     },
 
+    // TODO: complete
+    menu: function()
+    {
+        var field = this;
+
+        this.required = true;
+
+        // element
+        this.element = document.createElement( "div" );
+        this.element.setAttribute( "data-name", this.name );
+
+        // handlers
+        var handlers = handles.call( this );
+
+        // items
+        var items = document.createElement( "div" );
+            items.innerHTML = null;
+            items.classList.add( "list" );
+            items.classList.add( "expand" );
+
+        // private functions
+        function define()
+        {
+            var key = field.source.key;
+            var data = field.options;
+            var root;
+            var keys = data.map( obj => obj[ key ] );
+                keys.sort();
+                keys.forEach( k =>
+                {
+                    var obj = data.find( obj => obj[ key ] == k );
+
+                    var parent = data.find( parent => parent[ key ] == obj.parent ) || {};
+                        parent.children = [ ...parent.children || [], obj ];
+
+                    if ( !obj.parent )
+                        root = obj;
+                } );
+
+            return root;
+        }
+
+        function state( label, value )
+        {
+            var spans = items.querySelectorAll( "span" );
+                spans.forEach( span => span.classList.remove( "formselected" ) );
+
+            if ( field.value == value )
+                label.classList.add( "formselected" );
+        }
+
+        function toggle( args )
+        {
+            var children = args.element.querySelectorAll( "ul" );
+                children.forEach( child =>
+                {
+                    if ( child.getAttribute( "data-parent" ) == args.selected[ field.source.key ] )
+                    {
+                        child.classList.toggle( "hide" );
+                        //this.innerText = child.classList.contains( "hide" ) ? "+" : "-";
+                    }
+                } );
+        }
+
+        // public methods
+        this.render = () =>
+        {
+            // start
+            ( () =>
+            {
+                var root = define();
+
+                if ( root )
+                {
+                    let args =
+                    {
+                        selected: root,
+                        parent: items,
+                        breadcrumbs: []
+                    };
+
+                    items.innerHTML = null;
+                    this.element.appendChild( items );
+
+                    traverse( args );
+                }
+            } )();
+
+            function traverse( args )
+            {
+                var selected = args.selected;
+                    selected.value = selected[ field.source.key ];
+                    selected.item = args.item;
+                var parent = args.parent;
+                var breadcrumbs = [ ...args.breadcrumbs, selected.value ];
+                var level = args.level || 0;
+
+                // elements
+                var icon = document.createElement( "div" );
+                    icon.classList.add( "formswitch" );
+                    icon.classList.add( "formright" );
+                    icon.setAttribute( "data-value", selected.value );
+                if ( selected.children.length )
+                    icon.innerText = "\u25B6";
+                    icon.style.border = "1px solid transparent";
+                var label = document.createElement( "span" );
+                    label.innerText = selected.value;
+                    label.classList.add( selected.visible );
+                    label.addEventListener( "click", ( e ) =>
+                    {
+                        e.stopPropagation();
+                        click( { breadcrumbs: breadcrumbs, selected: selected, element: e.target } );
+                    }, false );
+                    label.appendChild( icon );
+                var item = items.querySelector( `[ data-value = "${ selected.value }" ]` ) || document.createElement( "button" );
+                if ( level < 2 )
+                    item.classList.add( "tab" );
+                    item.setAttribute( "data-value", selected.value );
+                    item.appendChild( label );
+                var ul = items.querySelector( `[ data-parent = "${ selected.parent }" ]` ) || document.createElement( "div" );
+                    //ul.classList.add( "list" );
+                    ul.setAttribute( "data-parent", selected.parent );
+                    ul.appendChild( item );
+                    //ul.classList.add( "hide" );
+
+                // toggle
+                ( () =>
+                {
+                    if ( selected.hasOwnProperty( "children" ) && selected.children.length )
+                    {
+                        let args =
+                        {
+                            breadcrumbs: breadcrumbs,
+                            selected: selected,
+                            element: ul
+                        };
+
+                        icon.addEventListener( "mouseover", () => toggle.call( icon, args ), false );
+                    }
+                } )();
+
+                /* add field inline
+                ( () =>
+                {
+                    if ( handlers.add )
+                    {
+                        let li = document.createElement( "li" );
+                            li.classList.add( "formadd" );
+                            li.classList.add( "hide" );
+                        let icon = document.createElement( "div" );
+                            icon.innerText = String.fromCodePoint( 8627 );
+                            icon.classList.add( "formswitch" );
+                            icon.style.pointerEvents = "none";
+                            icon.style.border = "1px solid transparent";
+                        let input = document.createElement( "input" );
+                            input.setAttribute( "size", 10 );
+                            input.setAttribute( "name", selected.value );
+                            input.setAttribute( "type", "text" );
+                            input.setAttribute( "placeholder", `add child to ${ selected.value }` );
+                            input.style.pointerEvents = "auto";
+                        let action = document.createElement( "div" );
+                            action.innerText = "+";
+                            action.classList.add( "formbutton" );
+                            action.setAttribute( "title", `add child to ${ selected.value }` );
+                            action.addEventListener( "click", () => add.call( input, selected ), false );
+
+                        li.appendChild( icon );
+                        li.appendChild( input );
+                        li.appendChild( action );
+                        ul.appendChild( li );
+
+                        // add child button ( showing )
+                        let button = document.createElement( "div" );
+                            button.innerText = String.fromCodePoint( 8628 );
+                            button.classList.add( "formbutton" );
+                            button.setAttribute( "title", `add child to ${ selected.value }` );
+                            button.addEventListener( "click", () => show( li ), false );
+
+                        item.appendChild( button );
+                    }
+                } )();*/
+
+                // expand
+                ( () =>
+                {
+                    if ( ul.getAttribute( "data-parent" ) == "" )
+                        ul.classList.remove( "hide" );
+
+                    if ( selected?.item?.expand )
+                       ul.classList.remove( "hide" );
+                } )();
+
+                // selected state
+                state( label, selected.value );
+
+                level++;
+                //i++;
+
+                parent.appendChild( ul );
+
+                // re-iterate
+                ( () =>
+                {
+                    if ( selected.hasOwnProperty( "children" ) && selected.children.length )
+                    {
+                        selected.children.forEach( ( child, index ) =>
+                        {
+                            var args =
+                            {
+                                selected: child,
+                                parent: ul,
+                                breadcrumbs: breadcrumbs,
+                                level: level,
+                                //index: index,
+                                item: selected
+                            };
+
+                            traverse( args );
+                        } );
+                    }
+                } )();
+            }
+        };
+
+        this.update = ( item ) =>
+        {
+            this.selected = item;
+            this.element.parentNode.style.pointerEvents = "none";
+        };
+
+        this.render();
+    },
+
     number: function()
     {
         var field = this;
@@ -452,7 +686,13 @@ Object.assign( Components,
             field.validate( field );
         }, false );
 
-        this.update( this.value );
+        this.update = ( option ) =>
+        {
+            this.element.value = option.value;
+            this.selected = option;
+
+            table.call( this );
+        };
     },
 
     object: function()
@@ -462,7 +702,9 @@ Object.assign( Components,
 
         this.element = document.createElement( "div" );
 
-        if ( this.value.type() == "object" )
+        console.log( this.value );
+
+        if ( this.value.typeof() == "object" )
         {
             let keys = this.value.keys();
                 keys.forEach( key =>
@@ -478,7 +720,7 @@ Object.assign( Components,
                         {
                             field.selected.value[ key ] = this.value;
                             field.validate( field );
-                            oninput.call( field.element );
+                            //oninput.call( field.element );
                         }, false );
 
                     components[ key ] = input;
@@ -495,7 +737,7 @@ Object.assign( Components,
                 } );
             };
 
-            this.update( this.value );
+            //this.update( this.value );
         }
     },
 
@@ -516,7 +758,7 @@ Object.assign( Components,
             this.element.addEventListener( "keyup", function()
             {
                 field.selected.value = this.innerText;
-                oninput.call( this );
+                //oninput.call( this );
 
                 field.validate( field );
             }, false );
@@ -550,7 +792,7 @@ Object.assign( Components,
 
             field.update( option );
             field.validate( field );
-            oninput.call( this );
+            //oninput.call( this );
         }, false );
 
         this.update = ( option ) =>
@@ -588,28 +830,35 @@ Object.assign( Components,
 
         this.update = () =>
         {
-            var valid = this.validate.row( this );
-            var array = [];
-            var object = {};
+            table.call( this );
+
+            var click;
+            var valid = this.validate.row();
+            var data = [];
+            var value = {};
+            var row = this.table.get.row( this.index );
 
             if ( valid )
             {
-                for ( let col in field.row )
+                for ( let col in row )
                 {
-                    let obj = field.row[ col ];
+                    let obj = row[ col ];
 
-                    if ( obj.field && obj.field.required )
+                    if ( obj.field && obj.field.required && !obj.silent )
                     {
-                        array.push( obj.field.value );
-                        object[ obj.field.name ] = obj.field.value.value;
+                        data.push( obj.field.selected );
+                        value[ obj.field.name ] = obj.field.selected.value;
                     }
                 }
-
-                if ( handlers.click )
-                    handlers.click( { array: array, object: object, field: field } );
-
-                this.element.setAttribute( "disabled", "" );
             }
+
+            click = () =>
+            {
+                handlers.click.call( this, { table: this.table, index: this.index, data: data, value: value } );
+                this.element.setAttribute( "disabled", "" );
+            };
+
+            this.element.onclick = click;
         };
 
         this.element = document.createElement( "input" );
@@ -618,8 +867,6 @@ Object.assign( Components,
         this.element.addEventListener( "click", field.update, false );
 
         this.reset = () => this.element.removeAttribute( "disabled" );
-
-        this.update();
     },
 
     tel: Components.input,
@@ -640,7 +887,7 @@ Object.assign( Components,
         this.element.addEventListener( "click", function()
         {
             field.update( field.options[ index ] );
-            oninput.call( this );
+            //oninput.call( this );
         } );
 
         this.update = ( option ) =>
@@ -650,8 +897,6 @@ Object.assign( Components,
 
             index = 1 - index;
         };
-
-        this.update( this.value );
     },
 
     tree: function()
@@ -661,10 +906,8 @@ Object.assign( Components,
         this.required = true;
 
         // element
-        this.element = document.createElement( "input" );
-        this.element.setAttribute( "name", this.name );
-        this.element.setAttribute( "type", "hidden" );
-        //this.element.setAttribute( "value", this.value );
+        this.element = document.createElement( "div" );
+        this.element.setAttribute( "data-name", this.name );
 
         // handlers
         var handlers = handles.call( this );
@@ -672,43 +915,65 @@ Object.assign( Components,
         // items
         var items = document.createElement( "div" );
             items.innerHTML = null;
-            //items.setAttribute( "data-name", this.name );
 
         // private functions
-        function add( args )
+        function add( selected )
         {
-            args.field = field;
+            if ( this.value )
+            {
+                let item = new constructors.Item( { [ field.source.key ]: this.value, parent: selected[ field.source.key ], item: selected }, field.source.key );
 
-            if ( handlers.add )
-                handlers.add( args );
+                if ( handlers.add )
+                    handlers.add( field, item );
+
+                //field.update( item );
+            }
         }
 
         function click( args )
         {
-            var value = args.value;
-
-            field.update( value );
-            // TODO: field.selected ( option )
-
-            state( args.element, value );
-            oninput.call( args.element );
-
-            if ( handlers.click )
-                handlers.click( args );
+            field.update( args.selected );
+            state( args );
+            oninput.call( field );
         }
 
-        function show( item )
+        function define()
         {
-            item.classList.toggle( "hide" );
+            var key = field.source.key;
+            var data = field.options;
+            var root;
+            var keys = data.map( obj => obj[ key ] );
+                keys.sort();
+                keys.forEach( k =>
+                {
+                    var obj = data.find( obj => obj[ key ] == k );
+
+                    var parent = data.find( parent => parent[ key ] == obj.parent ) || {};
+                        parent.children = [ ...parent.children || [], obj ];
+
+                    if ( !obj.parent )
+                        root = obj;
+                } );
+
+            return root;
         }
 
-        function state( label, value )
+        // show the add input
+        function show( li )
+        {
+            li.classList.toggle( "hide" );
+        }
+
+        function state( args )
         {
             var spans = items.querySelectorAll( "span" );
-                spans.forEach( span => span.classList.remove( "formselected" ) );
+                spans.forEach( span =>
+                {
+                    span.classList.remove( "formselected" );
+                } );
 
-            if ( field.value == value )
-                label.classList.add( "formselected" );
+            if ( field.selected.equals( args.selected ) )
+                args.element.classList.add( "formselected" );
         }
 
         function toggle( args )
@@ -716,190 +981,191 @@ Object.assign( Components,
             var children = args.element.querySelectorAll( "ul" );
                 children.forEach( child =>
                 {
-                    if ( child.getAttribute( "data-parent" ) == args.value )
+                    if ( child.getAttribute( "data-parent" ) == args.selected[ field.source.key ] )
                     {
                         child.classList.toggle( "hide" );
                         this.innerText = child.classList.contains( "hide" ) ? "+" : "-";
                     }
                 } );
 
-            //if ( handlers.toggle )
-            //    handlers.toggle( args );
+            if ( handlers.toggle )
+                handlers.toggle( args );
         }
 
         // public methods
         this.render = () =>
         {
             var i = 0;
-            var root = this.source.data.find( obj => !obj.parent );
 
-            // clear the element
-            items.innerHTML = null;
-
-            // start the iteration
-            if ( root )
+            // start
+            ( () =>
             {
-                let args =
-                {
-                    data: root,
-                    parent: items,
-                    breadcrumbs: [],
-                    expand: root.expand
-                };
+                var root = define();
 
-                traverse( args );
-            }
+                if ( root )
+                {
+                    let args =
+                    {
+                        selected: root,
+                        parent: items,
+                        breadcrumbs: []
+                    };
+
+                    items.innerHTML = null;
+                    this.element.appendChild( items );
+
+                    traverse( args );
+                }
+            } )();
 
             function traverse( args )
             {
-                var data = args.data;
-                var value = data[ field.source.key ];
+                var selected = args.selected;
+                    selected.value = selected[ field.source.key ];
+                    selected.item = args.item;
                 var parent = args.parent;
-                var breadcrumbs = [ ...args.breadcrumbs, value ];
+                var breadcrumbs = [ ...args.breadcrumbs, selected.value ];
                 var level = args.level || 0;
                 var index = args.index || 0;
                 var _i = i;
 
                 // elements
                 var icon = document.createElement( "div" );
-                    icon.innerText = String.fromCodePoint( 8627 );
                     icon.classList.add( "formswitch" );
-                    icon.setAttribute( "data-value", value );
+                    icon.setAttribute( "data-value", selected.value );
+                    icon.innerText = selected.expand ? "-" : "+";
                 var label = document.createElement( "span" );
-                    label.innerText = value;
-                    label.classList.add( data.visible );
+                    label.innerText = selected.value;
+                    label.classList.add( selected.visible );
+                if ( field.selected.equals( selected ) )
+                    label.classList.add( "formselected" );
                     label.addEventListener( "click", ( e ) =>
                     {
                         e.stopPropagation();
-                        click( { breadcrumbs: breadcrumbs, data: data, element: e.target, value: value } );
+                        click( { breadcrumbs: breadcrumbs, selected: selected, element: e.target } );
                     }, false );
-                var item = document.createElement( "li" );
+                var item = items.querySelector( `[ data-value = "${ selected.value }" ]` ) || document.createElement( "li" );
                     item.classList.add( "formitem" );
                     item.setAttribute( "data-index", _i );
                     item.setAttribute( "data-child", index );
-                    item.setAttribute( "data-value", value );
+                    item.setAttribute( "data-value", selected.value );
                     item.appendChild( icon );
                     item.appendChild( label );
-                var ul = items.querySelector( `[ data-parent = "${ data.parent }" ]` ) || document.createElement( "ul" );
-                    ul.setAttribute( "data-parent", data.parent );
+                var ul = items.querySelector( `[ data-parent = "${ selected.parent }" ]` ) || document.createElement( "ul" );
+                    ul.setAttribute( "data-parent", selected.parent );
                     ul.appendChild( item );
-
-                // toggle
-                if ( data.hasOwnProperty( "children" ) )
-                {
-                    let args =
-                    {
-                        breadcrumbs: breadcrumbs,
-                        data: data,
-                        element: ul,
-                        value: value
-                    };
-
-                    icon.addEventListener( "click", () => toggle.call( icon, args ), false );
-                }
-                else
-                {
-                    icon.style.pointerEvents = "none";
-                    icon.style.border = "1px solid transparent";
-                }
-
-                // add field
-                if ( handlers.add )
-                {
-                    // new child ( toggled )
-                    let li = document.createElement( "li" );
-                        li.classList.add( "formadd" );
-                        li.classList.add( "hide" );
-                    let icon = document.createElement( "div" );
-                        icon.innerText = String.fromCodePoint( 8627 );
-                        icon.classList.add( "formswitch" );
-                        icon.style.pointerEvents = "none";
-                        icon.style.border = "1px solid transparent";
-                    let input = document.createElement( "input" );
-                        input.setAttribute( "size", 10 );
-                        input.setAttribute( "name", value );
-                        input.setAttribute( "type", "text" );
-                        input.setAttribute( "placeholder", `add child to ${ value }` );
-                    let action = document.createElement( "div" );
-                        action.innerText = "+";
-                        action.classList.add( "formbutton" );
-                        action.setAttribute( "title", `add child to ${ value }` );
-                        action.addEventListener( "click", () =>
-                        {
-                            field.update( input.value );
-
-                            var args =
-                            {
-                                breadcrumbs: breadcrumbs,
-                                data: data,
-                                element: action,
-                                value: input.value
-                            };
-
-                            add( args );
-                        }, false  );
-
-                    li.appendChild( icon );
-                    li.appendChild( input );
-                    li.appendChild( action );
-                    ul.appendChild( li );
-
-                    // add child button ( showing )
-                    let button = document.createElement( "div" );
-                        button.innerText = String.fromCodePoint( 8628 );
-                        button.classList.add( "formbutton" );
-                        button.setAttribute( "title", `add child to ${ value }` );
-                        button.addEventListener( "click", () => show( li, ul, value ), false );
-
-                    item.appendChild( button );
-                }
-
-                if ( !data.expand )
                     ul.classList.add( "hide" );
 
-                if ( args.expand || !ul.getAttribute( "data-parent" ) )
-                    ul.classList.remove( "hide" );
+                // toggle
+                ( () =>
+                {
+                    if ( selected.hasOwnProperty( "children" ) && selected.children.length )
+                    {
+                        let args =
+                        {
+                            breadcrumbs: breadcrumbs,
+                            selected: selected,
+                            element: ul
+                        };
 
-                state( label, value );
+                        icon.addEventListener( "click", () => toggle.call( icon, args ), false );
+                    }
+                    else
+                    {
+                        icon.innerText = "";
+                        icon.style.pointerEvents = "none";
+                        icon.style.border = "1px solid transparent";
+                    }
+                } )();
 
-                parent.appendChild( ul );
+                // add field inline
+                ( () =>
+                {
+                    if ( handlers.add )
+                    {
+                        let li = document.createElement( "li" );
+                            li.classList.add( "formadd" );
+                            li.classList.add( "hide" );
+                        let icon = document.createElement( "div" );
+                            icon.innerText = String.fromCodePoint( 8627 );
+                            icon.classList.add( "formswitch" );
+                            icon.style.pointerEvents = "none";
+                            icon.style.border = "1px solid transparent";
+                        let input = document.createElement( "input" );
+                            input.setAttribute( "size", 10 );
+                            input.setAttribute( "name", selected.value );
+                            input.setAttribute( "type", "text" );
+                            input.setAttribute( "placeholder", `add child to ${ selected.value }` );
+                            input.style.pointerEvents = "auto";
+                            input.addEventListener( "input", override, false );
+                        let action = document.createElement( "div" );
+                            action.innerText = "+";
+                            action.classList.add( "formbutton" );
+                            action.setAttribute( "title", `add child to ${ selected.value }` );
+                            action.addEventListener( "click", () => add.call( input, selected ), false );
+
+                        li.appendChild( icon );
+                        li.appendChild( input );
+                        li.appendChild( action );
+                        ul.appendChild( li );
+
+                        // add child button ( showing )
+                        let button = document.createElement( "div" );
+                            button.innerText = String.fromCodePoint( 8628 );
+                            button.classList.add( "formbutton" );
+                            button.setAttribute( "title", `add child to ${ selected.value }` );
+                            button.addEventListener( "click", () => show( li ), false );
+
+                        item.appendChild( button );
+                    }
+                } )();
+
+                // expand
+                ( () =>
+                {
+                    if ( ul.getAttribute( "data-parent" ) == "" )
+                        ul.classList.remove( "hide" );
+
+                    //if ( selected.expand )
+                    //    ul.classList.remove( "hide" );
+
+                    if ( selected?.item?.expand )
+                       ul.classList.remove( "hide" );
+                } )();
 
                 level++;
                 i++;
 
-                // reiterate
-                if ( data.hasOwnProperty( "children" ) )
+                parent.appendChild( ul );
+
+                // re-iterate
+                ( () =>
                 {
-                    icon.innerText = data.expand ? "-" : "+";
-
-                    data.children.forEach( ( child, index ) =>
+                    if ( selected.hasOwnProperty( "children" ) && selected.children.length )
                     {
-                        var args =
+                        selected.children.forEach( ( child, index ) =>
                         {
-                            data: child,
-                            parent: ul,
-                            breadcrumbs: breadcrumbs,
-                            expand: data.expand,
-                            level: level,
-                            index: index
-                        };
+                            var args =
+                            {
+                                selected: child,
+                                parent: ul,
+                                breadcrumbs: breadcrumbs,
+                                level: level,
+                                index: index,
+                                item: selected
+                            };
 
-                        traverse( args );
-                    } );
-                }
+                            traverse( args );
+                        } );
+                    }
+                } )();
             }
         };
 
-        this.state = ( value ) =>
+        this.update = ( item ) =>
         {
-            var item = items.querySelector( `[ data-value = "${ value }" ]` );
-
-            if ( item )
-            {
-                let label = item.querySelector( "span" );
-
-                state( label, value );
-            }
+            this.selected = item;
+            this.element.parentNode.style.pointerEvents = "none";
         };
 
         this.render();
@@ -923,7 +1189,7 @@ Object.assign( Components,
 
         this.element = document.createElement( "div" );
 
-        if ( this.value.type() == "object" )
+        if ( this.value.typeof() == "object" )
         {
             let keys = this.value.keys();
                 keys.forEach( key =>
@@ -938,7 +1204,6 @@ Object.assign( Components,
                         {
                             field.selected.value[ key ] = Number( this.value );
                             field.validate( field );
-                            oninput.call( field.element );
                         }, false );
 
                     components[ key ] = input;
@@ -954,8 +1219,6 @@ Object.assign( Components,
                     components[ key ].value = option.value[ key ];
                 } );
             };
-
-            this.update( this.value );
         }
     }
 } );

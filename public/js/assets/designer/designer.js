@@ -1,4 +1,6 @@
-const Designer = function()
+import { Forms } from './ui/forms.js';
+
+export const Designer = function()
 {
     var scope = this;
     var axes = [ "x", "y", "z" ];
@@ -14,7 +16,6 @@ const Designer = function()
 
     scope.init = function( args )
     {
-        //Object.assign( app, this );
         Object.assign( scope, args );
 
         scope.groups = [];
@@ -24,7 +25,9 @@ const Designer = function()
         scope.group.name = args.name;
         scope.parent.add( scope.group );
 
-        Process.init();
+        scope.forms = new Forms();
+        scope.forms.project.init( { name: args.name, parent: app.ui.modal } );
+        scope.forms.project.select();
     };
 
     // TODO: add dimensions
@@ -181,7 +184,7 @@ const Designer = function()
         timeouts: {}
     };
 
-    const Process =
+    const _Process =
     {
         grid:
         {
@@ -1196,7 +1199,7 @@ const Designer = function()
         }
     };
 
-    const Forms =
+    const _Forms =
     {
         group:
         {
@@ -2092,27 +2095,5 @@ const Designer = function()
         }
     };
 
-    const UI =
-    {
-        add: ( element, parent ) => parent.appendChild( element ),
-        cancel: ( parent ) =>
-        {
-            UI.clear( parent );
-            UI.hide( parent );
-        },
-        clear: ( parent ) => parent.innerHTML = null,
-        hide: ( parent ) => parent.classList.add( "hide" ),
-        init: () =>
-        {
-            UI.reset( app.ui.modal );
-
-        },
-        message: ( message ) => console.warn( message ),
-        reset: ( parent ) =>
-        {
-            UI.clear( parent );
-            UI.show( parent );
-        },
-        show: ( parent ) => parent.classList.remove( "hide" )
-    };
+    
 };

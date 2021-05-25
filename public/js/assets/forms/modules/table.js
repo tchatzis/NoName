@@ -4,63 +4,25 @@ import { Field } from './field.js';
 const Table = function( config )
 {
     var table = this;
-    var dnd = new DnD();
-    var row = new RowMethods();
-    var schema = new Schema();
-    var stack = new Stack();
     var names = [];
     var defaults = {};
     var data = {};
     var cells = {};
+    var promises = [];
+    var dnd = new DnD();
+    var row = new RowMethods();
+    var schema = new Schema();
+    var stack = new Stack();
 
+    // get table properties and data
     Data.call( this );
 
     // public methods
     this.add = row.add;
     this.delete = row.delete;
     this.define = config.vertical ? stack.add : schema.add;
-    this.update = ( index, values ) =>
-    {
-        for ( let name in values )
-        {
-            let field = cells[ index ][ name ].field;
-
-            cells[ index ][ name ].value = values[ name ];
-            field.update( { text: name, value: values[ name ] } );
-            field.validate();
-            field.validate.row();
-        }
-
-        /*console.log( "cell", table.get.cell( index, "name" ) );
-        console.log( "column", table.get.column( "name" ) );
-        console.log( "columns", table.get.columns() );
-        console.log( "data", table.get.data() );
-        console.log( "field", table.get.field( index, "name" ) );
-        console.log( "row", table.get.row( index ) );
-        console.log( "size", table.get.size() );
-        console.log( "value", table.get.value( 1, "name" ) );
-        console.log( "values", table.get.values( 1 ) );
-        console.log( "" );*/
-    };
-
     this.element = Utilities.create( "table-form" );
     this.next = {};
-
-    this.set = ( name, value ) => this[ name ] = value;
-
-    this.set.cells = ( args ) =>
-    {
-        cells[ args.index ][ args.name ] =
-        {
-            cell: args.cell,
-            silent: !!args.silent,
-            value: args.value
-        };
-
-        // only if controls are true
-        if ( row.state )
-            cells[ args.index ][ args.name ].state = row.state;
-    };
 
     // called from DnD.drop()
     // called from RowMethods.delete()
@@ -68,7 +30,7 @@ const Table = function( config )
     {
         var rows = table.get.size().rows;
 
-        for ( let i = 1; i <= rows + 1; i++ )
+        for ( let i = 1; i <= rows; i++ )
         {
             let element = table.element.children[ i ];
             let autonumber = element.querySelector( ".table-number" );
@@ -149,23 +111,29 @@ const Table = function( config )
             {
                 var field = new Field( args.option );
                 await field.init();
+                var selected = field.source?.key ? field.selected[ field.source.key ] : field.selected.value;
 
                 this.element.appendChild( field.element );
 
                 cells[ args.index ][ args.option.name ].field = field;
                 cells[ args.index ][ args.option.name ].selected = field.selected;
+                cells[ args.index ][ args.option.name ].value = selected;
 
                 field.index = args.index;
                 field.table = table;
+                field.update( field.value.clone() );
+                Object.assign( field.settings, args.settings );
 
                 // get the default value
-                if ( !args.index )
+                if ( !args.index && field.required )
                     defaults[ args.option.name ] = field.value.value;
                 else
-                    data[ args.index ][ args.option.name ] = field.selected.value;
+                    data[ args.index ][ args.option.name ] = selected;
 
                 // validate the default value
-                return field.validate( field );
+                field.validate();
+
+                return args;
             }
         } );
 
@@ -178,7 +146,13 @@ const Table = function( config )
         Object.defineProperty( this, "parent",
         {
             enumerable: false,
-            value: ( parent ) => parent.appendChild( this.element )
+            value: ( parent ) =>
+            {
+                if ( parent )
+                    return parent.appendChild( this.element );
+                else
+                    return this.element.parentNode;
+            }
         } );
 
         // hooks
@@ -188,11 +162,13 @@ const Table = function( config )
         };
 
         // outputs
+        this.divider = ( args ) => new Promise( ( resolve ) => resolve( args ) );
+
         this.json = ( args ) =>
         {
-            var re = new RegExp( args.delim, 'g' );
+            var re = new RegExp( args.settings.delim, 'g' );
             var span = document.createElement( "div" );
-                span.innerText = JSON.stringify( args.option.value ).replace( re, `${ args.delim }\n` );
+                span.innerText = JSON.stringify( args.option.value ).replace( re, `${ args.settings.delim }\n` );
 
             this.element.appendChild( span );
             this.element.classList.add( "pre" );
@@ -202,10 +178,15 @@ const Table = function( config )
 
         this.number = ( args ) =>
         {
-            this.element.innerText = args.option.value;
-            this.element.classList.add( "table-number" );
+            var cell = () =>
+            {
+                this.element.innerText = args.option.value;
+                this.element.classList.add( "table-number" );
 
-            return true;
+                return args;
+            };
+
+            return new Promise( ( resolve ) => resolve( cell() ) );
         };
 
         this.pre = ( args ) =>
@@ -218,14 +199,19 @@ const Table = function( config )
 
         this.text = ( args ) =>
         {
-            this.element.innerText = args.option.value;
-            this.element.classList.add( "table-text" );
+            var cell = () =>
+            {
+                this.element.innerText = args.option.value;
+                this.element.classList.add( "table-text" );
 
-            return true;
+                return args;
+            };
+
+            return new Promise( ( resolve ) => resolve( cell() ) );
         };
     }
 
-    // getters / setter
+    // getters / setters / methods
     function Data()
     {
         this.get =
@@ -244,6 +230,10 @@ const Table = function( config )
             columns: () => names,
             data: () =>
             {
+                if ( config.vertical )
+                    for ( let index in data )
+                        return data[ index ];
+
                 var values = [];
 
                 for ( let index in cells )
@@ -252,7 +242,13 @@ const Table = function( config )
 
                 return values;
             },
+            element:
+            {
+                cell: ( index, name ) => this.get.cell( index, name ).element,
+                row: ( index ) => table.element.querySelector( `[ data-row="${ index }" ]` )
+            },
             field: ( index, name ) => cells[ index ][ name ].field,
+            next: () => table.next,
             row: ( index ) => cells[ index ],
             size: () => { return { cols: names.length, rows: Object.keys( cells ).length } },
             value: ( index, name ) => cells[ index ][ name ].field.selected.value,
@@ -266,14 +262,95 @@ const Table = function( config )
                 return values;
             }
         };
+        
+        this.highlight = ( index ) =>
+        {
+            var element = table.get.element.row( index );
+                element.classList.add( "table-highlight" );
+
+            setTimeout( () => element.classList.remove( "table-highlight" ), 2000 );
+        };
+
+        this.lock = ( index ) =>
+        {
+            var element = table.get.element.row( index );
+                element.removeAttribute( "draggable" );
+                element.classList.add( "table-disabled" );
+                element.classList.remove( "table-hover" );
+        };
 
         this.populate = async ( source ) =>
         {
-            if ( !config.vertical )
+            if ( config.vertical )
+                return;
+
+            var data = await app.getters[ source.type ]( source );
+                data.data.forEach( values => { table.next = values; this.add() } );
+
+            return true;
+        };
+
+        this.set =
+        {
+            cells: ( args ) =>
             {
-                let data = await app.getters[ source.type ]( source );
-                    data.data.forEach( values => { table.next = values; this.add() } );
+                cells[ args.index ][ args.name ] =
+                {
+                    cell: args.cell,
+                    silent: !!args.silent,
+                    value: args.value
+                };
+
+                // only if controls are true
+                if ( row.state )
+                    cells[ args.index ][ args.name ].state = row.state;
+            },
+
+            next: ( name, value ) => this.next[ name ] = value,
+
+            property: ( name, value ) => this[ name ] = value
+        };
+
+        this.test = ( index, name ) =>
+        {
+            console.log( "cell", table.get.cell( index, name ) );
+            console.log( "column", table.get.column( name ) );
+            console.log( "columns", table.get.columns() );
+            console.log( "data", table.get.data() );
+            console.log( "field", table.get.field( index, name ) );
+            console.log( "row", table.get.row( index ) );
+            console.log( "size", table.get.size() );
+            console.log( "value", table.get.value( index, name ) );
+            console.log( "values", table.get.values( index ) );
+            console.log( "" );
+        };
+
+        this.unlock = ( index ) =>
+        {
+            var element = table.get.element.row( index );
+                element.addAttribute( "draggable" );
+                element.classList.remove( "table-disabled" );
+                element.classList.add( "table-hover" );
+        };
+
+        this.update = ( index, values ) =>
+        {
+            for ( let name in values )
+            {
+                let field = cells[ index ][ name ].field;
+
+                cells[ index ][ name ].value = values[ name ];
+                field.update( { text: name, value: values[ name ] } );
+                field.validate();
+                field.validate.row();
             }
+        };
+
+        this.visible = ( index, name, bool ) =>
+        {
+            var visibility = bool ? "visible" : "hidden";
+            var element = this.get.element.cell( index, name );
+                element.style.visibility = visibility;
         };
     }
 
@@ -307,7 +384,8 @@ const Table = function( config )
     function RowElement()
     {
         this.element = Utilities.create( "table-row" );
-        this.element.classList.add( "table-hover" );
+        if ( config.hover )
+            this.element.classList.add( "table-hover" );
         this.element.setAttribute( "data-row", this.index );
         
         if ( this.index )
@@ -315,7 +393,7 @@ const Table = function( config )
             this.element.ondragover = dnd.allow;
             this.element.setAttribute( "draggable", true );
         }
-        else
+        else if ( config.add )
            this.element.classList.add( "table-add" );
 
         this.element.ondrop = dnd.drop;
@@ -327,6 +405,12 @@ const Table = function( config )
     {
         this.add = () =>
         {
+            if ( config.vertical )
+            {
+                Promise.all( promises ).then( res => { /*console.warn( "resolved", res )*/ } );
+                return;
+            }
+
             RowElement.call( this );
 
             var index = this.index;
@@ -342,7 +426,7 @@ const Table = function( config )
 
             var set = ( key, data ) =>
             {
-                var value = table.next ? table.next[ key ] : data.value;
+                var value = table.next[ key ] || data.value;
                 var copy = { ...data };
                     copy.name = key;
                     copy.type = data.type;
@@ -351,7 +435,7 @@ const Table = function( config )
                     cell.css( "add", "table-cell" );
                     cell.parent( element );
                 // this is where the cell gets its content / field
-                var promise = cell[ data.output ]( { index: index, option: copy, delim: data.delim } );
+                var promise = cell[ data.output ]( { index: index, option: copy, settings: { delim: data.delim } } );
                     promise.then( valid =>
                     {
                         validated.push( valid );
@@ -365,7 +449,7 @@ const Table = function( config )
                             table.update( 0, defaults );
                     } );
 
-                table.set.cells( { index: index, name: key, value: value, cell: cell } );
+                table.set.cells( { index: index, name: key, value: value, cell: cell, silent: !!data.silent } );
             };
 
             for ( let [ key, data ] of schema.columns )
@@ -420,8 +504,9 @@ const Table = function( config )
             if ( config.autonumber )
             {
                 let cell = new CellElement();
-                    cell.text( { index: null, option: { value: instance.index === 0 ? "\u27a4" : instance.index } } );
-                    cell.css( "add", "table-number" );
+                    cell.number( { index: null, option: { value: instance.index === 0 ? "\u27a4" : instance.index } } );
+                if ( !instance.index )
+                    cell.css( "add", "table-none" );
 
                 instance.element.prepend( cell.element );
 
@@ -434,7 +519,7 @@ const Table = function( config )
 
         this.controls = () =>
         {
-            var button = row.index ? { text: "-", value: "delete" } : { text: "+", value: "add" };
+            var button = row.index ? { text: "-", value: "delete", args: { table: table, index: row.index } } : { text: "+", value: "add", args: { table: table, index: row.index } };
             var cell = new CellElement();
                 cell.text( { index: null, option: { name: button.value, value: button.text } } );
                 cell.css( "add", "table-control" );
@@ -443,7 +528,7 @@ const Table = function( config )
                 cell.listen( "click", ( e ) =>
                 {
                     if ( table.handlers[ button.value ] )
-                        table.handlers[ button.value ]( table.next );
+                        table.handlers[ button.value ]( button.args );
 
                     row[ button.value ]( e.target );
                 } );
@@ -481,21 +566,47 @@ const Table = function( config )
     
     function Stack()
     {
+        var index = 0;
+        var _row = 0;
+        cells[ index ] = {};
+        data[ index ] = {};
+
         // add row
         this.add = ( parameters ) =>
         {
+            var divider = parameters.output == "divider";
             var key = parameters.name || parameters.type.toUpperCase();
+            var label = parameters.hasOwnProperty( "label" ) ? parameters.label : parameters.name;
+            var copy = { ...parameters };
+                copy.name = key;
+                copy.type = parameters.type;
+                copy.value = parameters.value;
+            var row = Utilities.create( "table-row" );
+                row.setAttribute( "data-row", _row );
+            var title = new CellElement();
+                title.text( { index: null, option: { name: key, value: label } } );
+            if ( divider )
+            {
+                title.css( "add", "table-divider" );
+                title.css( "remove", "table-border" );
+                title.css( "remove", "table-cell" );
+                title.css( "remove", "table-text" );
+            }
+            else
+                title.css( "add", "table-heading" );
+                title.parent( row );
+            var cell = new CellElement();
+                cell.css( "add", "table-cell" );
+            if ( !divider )
+                cell.parent( row );
 
-            /*this.columns.set( key, parameters );
+            table.element.appendChild( row );
 
+            cells[ index ][ key ] = { cell: cell };
             names.push( key );
 
-            var label = parameters.hasOwnProperty( "label" ) ? parameters.label : parameters.name;
-            var headings = this.headings();
-            var cell = new CellElement();
-                cell.text( { index: null, option: { name: key, value: label } } );
-                cell.css( "add", "table-heading" );
-                cell.parent( headings );*/
+            promises.push( cell[ parameters.output ]( { index: index, option: copy, settings: { row: _row, delim: parameters.delim } } ) );
+            _row++;
         };
     }
 

@@ -6,6 +6,5 @@ QT.Forms = function()
         const { default: Form } = await this.methods.import( args.name, url );
         let form = new Form();
             form.display[ args.name ].call( this, args );
-            form.process[ args.name ].call( this, args );
     };
 };
