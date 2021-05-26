@@ -83,12 +83,13 @@ export const Constructors = function()
     this.Item = function( args, key )
     {
         this[ key ] = args[ key ];
+        this.color = args.color || "transparent";
         this.label = args.label || this[ key ];
         this.children = [];
-        this.expand = args.expand || false;
+        this.expand = !!args.expand;
         this.item = args.item;
         this.parent = args.parent || "";
-        this.visible = args.visible || true;
+        this.visible = !!args.visible;
         
         this.clone = () =>
         {

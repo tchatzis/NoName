@@ -26,8 +26,7 @@ export const Designer = function()
         scope.parent.add( scope.group );
 
         scope.forms = new Forms();
-        scope.forms.project.init( { name: args.name, parent: app.ui.modal } );
-        scope.forms.project.select();
+        scope.forms.project.init();
     };
 
     // TODO: add dimensions

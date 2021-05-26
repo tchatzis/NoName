@@ -180,7 +180,7 @@ Object.assign( Components,
             Array.from( field.element.children ).forEach( item =>
             {
                 var name = item.getAttribute( "data-text" );
-                var predicate = field.settings.multiple ? values.has( name ) : name == option.value;
+                var predicate = field.settings.multiple ? values.has( name ) : name == option.text;
                 //var use = field.settings.multiple ? name : option.value;
                 //var selected = select( use );
 
