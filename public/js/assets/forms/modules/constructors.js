@@ -34,6 +34,9 @@ export const Constructors = function()
         if ( args.attributes )
             this.attributes = args.attributes;
 
+        if ( args.bind )
+            this.bind = args.bind;
+
         if ( args.destination )
             this.destination = args.destination;
 
@@ -191,12 +194,6 @@ export const Constructors = function()
         if ( args.hasOwnProperty( "url" ) )
         {
             this.url = args.url;
-            return;
-        }
-
-        if ( args.form && args.bind )
-        {
-            this.bind = ( row ) => args.form.get.field( args.form.composite.name, row, args.bind );
             return;
         }
 

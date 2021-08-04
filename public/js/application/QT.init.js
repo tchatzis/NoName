@@ -33,7 +33,6 @@ QT.prototype.init = async function()
     QT.MouseControls.call( this, this.config.controls.type );
     QT.GamePad.call( this );
 
-
     this.presets = new QT.Presets();
     this.record = new QT.Record();
 

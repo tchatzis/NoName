@@ -1,12 +1,12 @@
 QT.MouseControls = function( type )
 {
-    var controls;
-    
+    this.controls = {};
+
     switch ( type )
     {
         case "orbit":
-            controls = new THREE.OrbitControls( this.stage.camera, this.stage.renderer.domElement );
-            controls.ui = this.ui;
+            this.controls.perspective = new THREE.OrbitControls( this.stage.perspective, this.stage.renderer.domElement );
+            this.controls.ui = this.ui;
         break;
     }
 };

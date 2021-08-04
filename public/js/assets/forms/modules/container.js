@@ -176,7 +176,7 @@ export function Container( config )
         this.element = Utilities.create( "form-tab" );
         this.element.classList.add( config.format );
         this.element.innerText = args.title;
-        this.element.onclick = () => container.tabs.select( args.title );
+        this.element.onclick    = () => { container.tabs.select( args.title ); container.tabs.callback };
         this.element.ondblclick = () => container.tabs.popup( args.title );
     }
 
@@ -225,6 +225,16 @@ export function Container( config )
             this.index++;
 
             return container.tabs.map.get( args.title );
+        };
+
+        this.callback = 
+        {
+            set: ( callback ) => this.callback.function = callback,
+            invoke: () =>
+            {
+                if ( this.callback.function )
+                    this.callback.function( this.selected );
+            }
         };
 
         this.disable = ( title ) =>
@@ -291,6 +301,9 @@ export function Container( config )
                         container.tabs.selected = key;
                     }
             } );
+
+            this.selected = title;
+            this.callback.invoke();
 
             return container.tabs.map.get( container.tabs.selected );
         };

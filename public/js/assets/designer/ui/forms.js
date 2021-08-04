@@ -32,13 +32,13 @@ function Data()
     };
 }
 
-export const Forms = function()
+export const Forms = function( scope )
 {
     var forms = this;
 
     this.data = new Data();
 
-    this.process = new Process( forms );
+    this.process = new Process( scope, forms );
 
     this.project =
     {
@@ -77,7 +77,8 @@ export const Forms = function()
             this.workspace.container =
             {
                 common: new Container( { title: "common", parent: app.ui.widget, format: "tab-top" } ),
-                group: new Container( { title: "groups", parent: app.ui.widget, format: "tab-top" } )
+                //group: new Container( { title: "groups", parent: app.ui.widget, format: "tab-top" } )
+                view: new Container( { title: "view", parent: app.ui.widget, format: "tab-top" } )
             };
             
             this.process.workspace.init();
@@ -85,25 +86,11 @@ export const Forms = function()
 
         common:
         {
-            modes: ( parent ) =>
-            {
-                var modes = new Table( { parent: parent, border: false, vertical: true } );
-                    // TODO: data-divider=name / collapse and expand
-                    modes.define( { output: "divider", label: "Modes", name: "modes" } );
-                    modes.define( { output: "field", name: "camera", type: "buttons", settings: { horizontal: true },
-                        source: { type: "js", data: [ { text: "2D", value: "orthographic" }, { text: "3D", value: "perspective" } ] },
-                        handlers: [ { event: "input", handler: this.process.modes.camera } ] } );
-                    modes.define( { output: "field", name: "mode", type: "buttons", settings: { horizontal: true },
-                        source: { type: "js", data: [ { text: "view" }, { text: "select" }, { text: "edit", disabled: true }, { text: "add", disabled: true } ] },
-                        handlers: [ { event: "input", handler: this.process.modes.mode } ] } );
-                    modes.add();
-            },
-
             info: ( parent ) =>
             {
                 var info = new Table( { parent: parent, border: false, vertical: true } );
-                    info.define( { output: "divider", label: "Info", name: "modes" } );
-                    info.define( { output: "field", label: "camera", name: "camera.position", type: "vector" } );
+                    //info.define( { output: "divider", label: "Info", name: "modes" } );
+                    info.define( { output: "field", label: "camera", name: "camera.position", type: "vector", bind: { object: app.stage.camera, key: "position" } } );
                     info.define( { output: "field", label: "cursor", name: "cursor.position", type: "vector", value: { x: 1, y: 1, z: 2 } } );
                     info.add();
             },
@@ -133,6 +120,10 @@ export const Forms = function()
                     settings.define( { output: "divider", label: "Grid", name: "grid",
                         handlers: handlers } );
                     settings.define( { output: "field", label: "position", name: "grid.position", type: "vector", value: data.grid?.position,
+                        handlers: handlers } );
+                    settings.define( { output: "field", label: "size", name: "grid.size", type: "vector", value: data.grid?.size,
+                        handlers: handlers } );
+                    settings.define( { output: "field", label: "spacing", name: "grid.spacing", type: "vector", value: data.grid?.spacing,
                         handlers: handlers } );
                     settings.define( { output: "field", label: "visibility", name: "grid.visible", type: "toggle", value: data.grid?.visible,
                         source: { type: "js", data: [ { text: "on", value: true }, { text: "off", value: false } ] },
@@ -202,6 +193,23 @@ export const Forms = function()
                 //    groups.lock( 1 );
                 //    groups.visible( 0, "submit", false );
                 //    groups.visible( 1, "submit", false );*/
+            }
+        },
+
+        view:
+        {
+            orthographic: ( parent ) =>
+            {
+                var modes = new Table( { parent: parent, border: false, vertical: true } );
+                    modes.define( { output: "field", name: "mode", type: "buttons", settings: { horizontal: true },
+                        source: { type: "js", data: [ { text: "add", disabled: false }, { text: "edit", disabled: true } ] },
+                        handlers: [ { event: "input", handler: this.process.modes.mode } ] } );
+                    modes.add();
+            },
+
+            perspective: ( parent ) =>
+            {
+
             }
         }
     }

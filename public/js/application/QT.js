@@ -20,7 +20,7 @@ function QT()
     this.data =
     {
         arrays: { animations: [], functions: [], persistent: { background: [], ground: [], functions: [] }, lfo: [], videos: [] },
-        assets: { textures: {}, displacements: {}, sprites: {}, fonts: {} },
+        assets: { textures: {}, displacements: {}, sprites: {}, fonts: {} }
     };
 
     this.devices =
@@ -30,6 +30,11 @@ function QT()
 
     this.methods =
     {
+        animate: ( args ) =>
+        {
+            this.data.animations.push( args );
+        },
+
         broadcast: ( name ) =>
         {
             var event = new Event( name );
@@ -45,6 +50,11 @@ function QT()
             var script = await import( `${ this.config.url }js/${ url }` );
 
             return script;
+        },
+
+        invoke: ( args ) =>
+        {
+            this.data.functions.push( args );
         },
 
         kill: ( array, name ) =>

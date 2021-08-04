@@ -127,6 +127,7 @@
         { type: 'js', directory: 'resources', name: 'app.music' },
         { type: 'js', directory: 'resources', name: 'app.patterns' },
         { type: 'js', directory: 'resources', name: 'app.persistent' },*/
+        { type: 'js', directory: 'resources', name: 'QT.Orthographic' },
         { type: 'js', directory: 'resources', name: 'QT.Presets' },
         //{ type: 'js', directory: 'resources', name: 'app.reader' },
         { type: 'js', directory: 'resources', name: 'QT.Record' },

@@ -7,6 +7,7 @@ function Field( args )
     var field = this;
     var constructors = new Constructors();
     var types;
+    //var id = 0;
 
     const check = ( value ) => this.value.value ? this.value : new constructors.Option( { text: this.value.text, value: value } );
     const checkVoid = ( value ) => this.value.void() ? new constructors.Option( { text: this.value.text, value: value } ) : this.value;
@@ -211,6 +212,7 @@ function Field( args )
             invoke();
             handlers();
             field.set.attributes();
+            field.binder();
         }
     } );
 
@@ -266,6 +268,39 @@ function Field( args )
             types = types.sort( ( a, b ) => a.text - b.text );
         }
     } );
+
+    // TODO: field bindings
+    field.binder = () =>
+    {
+        if ( this.bind )
+        {
+            let value = this.bind.object[ this.bind.key ];
+
+            field.update( optionize( value ) );
+
+            /*switch ( this.bind.key )
+            {
+                case "position":
+                    this.bind.object[ this.bind.key ].copy( value );
+                break;
+            }*/
+
+
+            //var object =
+
+
+            //this.bind.object
+
+            console.log( value );
+
+            //if ( !( id % 2 ) )
+            //
+            //else
+            //    value.copy( field.selected.value );
+
+            //id++;
+        }
+    };
 
     field.refresh =
     {

@@ -215,7 +215,7 @@ input:disabled
 
 .formdisabled
 {
-    pointer-events: none;
+    pointer-events: none !important;
     color: #333 !important;
     cursor: not-allowed !important;
 }

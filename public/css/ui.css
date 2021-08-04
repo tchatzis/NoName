@@ -195,6 +195,16 @@
     color: lime !important;
 }
 
+.ortho
+{
+    width: calc( 100vh - 48px );
+    height: calc( 100vh - 48px );
+    z-index: 2;
+    top: 24px;
+    right: 19vw;
+    position: absolute;
+}
+
 .popup
 {
     position: absolute;

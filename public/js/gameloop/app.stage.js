@@ -21,14 +21,23 @@ QT.Stage = function()
         ambient: new THREE.AmbientLight( 0xffffff, 0.2 )
     };
 
-    // camera
-    scope.camera = new THREE.PerspectiveCamera( 60, aspect, near, far );
-    scope.camera.name = "camera";
-    scope.camera.position.x = 0;
-    scope.camera.position.y = 1.5;
-    scope.camera.position.z = 20;
-    scope.camera.layers.enable( 1 );
-    scope.camera.add( scope.lights.point );
+    // cameras
+    scope.perspective = new THREE.PerspectiveCamera( 60, aspect, near, far );
+    scope.perspective.name = "perspective";
+    scope.perspective.position.x = 0;
+    scope.perspective.position.y = 1.5;
+    scope.perspective.position.z = 20;
+    scope.perspective.layers.enable( 1 );
+    scope.perspective.add( scope.lights.point );
+
+    scope.orthographic = new THREE.OrthographicCamera( -1, 1, 1, -1, 0.1, 2 );
+    scope.orthographic.name = "orthographic";
+    scope.orthographic.position.x = 0;
+    scope.orthographic.position.y = 1;
+    scope.orthographic.position.z = 0;
+    //scope.orthographic.lookAt( new THREE.Vector3() );
+
+    scope.camera = scope.perspective.clone();
 
     scope.lights.directional.position.set( shadow, shadow, shadow );
     scope.lights.directional.castShadow = true;
@@ -85,7 +94,8 @@ QT.Stage = function()
     scope.scene.name = "scene";
     scope.scene.background = null;
     scope.scene.fog = new THREE.Fog( scope.clearColor, scope.world * 0.8, scope.world );
-    scope.scene.add( scope.camera );
+    scope.scene.add( scope.perspective );
+    scope.scene.add( scope.orthographic );
     scope.scene.add( scope.lights.directional );
     scope.scene.add( scope.lights.hemisphere );
     scope.scene.add( scope.lights.ambient );
@@ -105,10 +115,14 @@ QT.Stage = function()
     scope.helpers.shadow.name = "shadow_helper";
     scope.helpers.shadow.visible = false;
     scope.scene.add( scope.helpers.shadow );
-    scope.helpers.camera = new THREE.CameraHelper( scope.camera );
-    scope.helpers.camera.name = "camera_helper";
-    scope.helpers.camera.visible = false;
-    scope.scene.add( scope.helpers.camera );
+    scope.helpers.orthographic = new THREE.CameraHelper( scope.orthographic );
+    scope.helpers.orthographic.name = "orthographic_helper";
+    scope.helpers.orthographic.visible = false;
+    scope.scene.add( scope.helpers.orthographic );
+    scope.helpers.perspective = new THREE.CameraHelper( scope.perspective );
+    scope.helpers.perspective.name = "perspective_helper";
+    scope.helpers.perspective.visible = false;
+    scope.scene.add( scope.helpers.perspective );
     scope.helpers.axes = new THREE.AxesHelper( 50 );
     scope.helpers.axes.name = "axes_helper";
     scope.helpers.axes.visible = false;
